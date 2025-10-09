@@ -1,1 +1,575 @@
-Hello Fuzzy Banana!
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Flappy Block — Single Page Game</title>
+    <style>
+      :root {
+        --bg: #70c5ce;
+        --ground: #d8a34a;
+        --block: #ff4757;
+        --pipe: #2f3542;
+        --text: #ffffff;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+      }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(#9be5ea, var(--bg));
+      }
+      #game-wrap {
+        width: 100%;
+        max-width: 900px;
+        margin: 24px;
+      }
+      /* preserve 4:3 aspect ratio for the game area and allow it to scale to viewport */
+      .canvas-container{position:relative;width:100%;padding-bottom:75%;max-height:calc(100vh - 120px);}
+      canvas{position:absolute;top:0;left:0;width:100%;height:100%;}
+      /* touch area sits above canvas to reliably capture taps on mobile */
+      .touch-area{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:auto}
+      /* make UI easier to tap on small screens */
+      @media(max-width:520px){
+        .panel{padding:12px 16px;font-size:14px}
+        .big{font-size:18px}
+      }
+      .overlay {
+        position: relative;
+        margin-top: -60px;
+        text-align: center;
+        pointer-events: none;
+      }
+      .panel {
+        pointer-events: auto;
+        display: inline-block;
+        padding: 10px 18px;
+        background: rgba(0, 0, 0, 0.45);
+        color: var(--text);
+        border-radius: 8px;
+        margin-top: 12px;
+      }
+      .big {
+        font-size: 22px;
+        font-weight: 700;
+      }
+      .small {
+        font-size: 13px;
+        opacity: 0.95;
+      }
+      .center {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: center;
+      }
+      .hint {
+        opacity: 0.9;
+        margin-top: 8px;
+        font-size: 13px;
+        color: #fff;
+      }
+      .footer {
+        margin-top: 12px;
+        color: #fff;
+        opacity: 0.9;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-wrap">
+      <div class="canvas-container">
+        <canvas id="game"></canvas>
+        <div class="touch-area" id="touch"></div>
+      </div>
+      <div class="overlay" id="ui">
+        <div class="panel" id="status">
+          <div class="big" id="score">Score: 0</div>
+          <div class="small" id="high">High: 0</div>
+          <div class="hint" id="message">Press Space or Up to start</div>
+        </div>
+        <div class="footer">Block Flappy — Use Space / ↑ to flap • Click or Tap to flap</div>
+      </div>
+    </div>
+
+    <script>
+      // Flappy Block — single-file game
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+
+      // Virtual game resolution (will scale to fit canvas CSS size)
+      const GAME_W = 800;
+      const GAME_H = 600;
+
+      // Responsive resize: size canvas to container and account for devicePixelRatio
+      const container = document.querySelector('.canvas-container');
+      function resize() {
+        const rect = container.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const targetW = Math.max(320, Math.floor(rect.width));
+        const targetH = Math.max(240, Math.floor(rect.height));
+        canvas.width = Math.round(targetW * dpr);
+        canvas.height = Math.round(targetH * dpr);
+        canvas.style.width = targetW + 'px';
+        canvas.style.height = targetH + 'px';
+        ctx.setTransform(1,0,0,1,0,0);
+        ctx.scale(canvas.width / GAME_W, canvas.height / GAME_H);
+      }
+      window.addEventListener('resize', resize);
+      setTimeout(resize,50);
+
+      // Ensure WebAudio resumes on first user interaction (required on mobile in some browsers)
+      function resumeAudio(){
+        if(audioCtx && audioCtx.state === 'suspended'){
+          audioCtx.resume().catch(()=>{});
+        }
+        window.removeEventListener('touchstart', resumeAudio);
+        window.removeEventListener('mousedown', resumeAudio);
+      }
+      window.addEventListener('touchstart', resumeAudio, {passive:true});
+      window.addEventListener('mousedown', resumeAudio);
+
+      // Touch area: map taps to flap reliably on mobile
+      const touchArea = document.getElementById('touch');
+      touchArea.addEventListener('touchstart', (e)=>{ e.preventDefault(); flap(); }, {passive:false});
+      touchArea.addEventListener('mousedown', (e)=>{ flap(); });
+
+      // Game state
+      let running = false;
+      let gameOver = false;
+      let started = false;
+
+      // Player
+      const player = {
+        x: 160,
+        y: GAME_H / 2,
+        w: 34,
+        h: 26,
+        vy: 0,
+        gravity: 1400, // px/s^2
+        flapImpulse: -420, // px/s
+      };
+
+      // Pipes
+      const pipes = [];
+      const pipeWidth = 80;
+      const gapMin = 140;
+      const gapMax = 210;
+      let pipeTimer = 0;
+      const pipeInterval = 1.5; // seconds between pipes
+      const pipeSpeed = 240; // px/s
+
+      // Score
+      let score = 0;
+      let high = parseInt(localStorage.getItem("flappy-block-high") || "0", 10) || 0;
+
+      // Timing
+      let lastTime = performance.now();
+
+      // UI
+      const scoreEl = document.getElementById("score");
+      const highEl = document.getElementById("high");
+      const messageEl = document.getElementById("message");
+
+      // Particles: white "poop" balls
+      const balls = [];
+      const BALL_MIN = 6;
+      const BALL_MAX = 16;
+      const BALL_RESTITUTION = 0.7; // bounce
+      const BALL_FRICTION = 0.995; // small damping
+
+      // Audio: simple bleep using Web Audio API
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const audioCtx = AudioContext ? new AudioContext() : null;
+      function playBleep() {
+        if (!audioCtx) return;
+        // create a short sine-ish bleep
+        const now = audioCtx.currentTime;
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(880 + Math.random() * 440, now);
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(0.08, now + 0.002);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+        o.connect(g);
+        g.connect(audioCtx.destination);
+        o.start(now);
+        o.stop(now + 0.13);
+      }
+
+      // Spawn a ball at player's location when flap
+      function spawnBall() {
+        const r = BALL_MIN + Math.random() * (BALL_MAX - BALL_MIN);
+        const speed = 140 + Math.random() * 120;
+        const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.8; // mostly upwards
+        balls.push({
+          x: player.x + (Math.random() - 0.5) * 10,
+          y: player.y + (Math.random() - 0.5) * 10,
+          vx: speed * Math.cos(angle) + player.vy * 0.1,
+          vy: speed * Math.sin(angle),
+          r,
+          invMass: 1 / (Math.PI * r * r),
+        });
+      }
+
+      // Update particles physics
+      function updateBalls(dt) {
+        // integrate
+        for (const b of balls) {
+          // gravity
+          b.vy += 800 * dt; // lower gravity for balls
+          b.vx *= BALL_FRICTION;
+          b.vy *= BALL_FRICTION;
+          b.x += b.vx * dt;
+          b.y += b.vy * dt;
+        }
+
+        // ball-ball collisions (naive O(n^2) — fine for small counts)
+        for (let i = 0; i < balls.length; i++) {
+          for (let j = i + 1; j < balls.length; j++) {
+            const a = balls[i];
+            const b = balls[j];
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const dist = Math.hypot(dx, dy);
+            const minDist = a.r + b.r;
+            if (dist > 0 && dist < minDist) {
+              // resolve overlap
+              const overlap = (minDist - dist) / 2;
+              const nx = dx / dist;
+              const ny = dy / dist;
+              a.x -= nx * overlap;
+              a.y -= ny * overlap;
+              b.x += nx * overlap;
+              b.y += ny * overlap;
+
+              // relative velocity
+              const rvx = b.vx - a.vx;
+              const rvy = b.vy - a.vy;
+              const rel = rvx * nx + rvy * ny;
+              if (rel > 0) continue; // moving apart
+
+              // simple impulse
+              const e = BALL_RESTITUTION;
+              const jimp = (-(1 + e) * rel) / (a.invMass + b.invMass);
+              const ix = jimp * nx;
+              const iy = jimp * ny;
+              a.vx -= ix * a.invMass;
+              a.vy -= iy * a.invMass;
+              b.vx += ix * b.invMass;
+              b.vy += iy * b.invMass;
+            }
+          }
+        }
+
+        // collisions with pipes and ground/ceiling
+        for (const b of balls) {
+          // ground
+          if (b.y + b.r >= GAME_H - 48) {
+            b.y = GAME_H - 48 - b.r;
+            if (b.vy > 0) b.vy = -b.vy * BALL_RESTITUTION;
+            b.vx *= 0.98;
+          }
+          // ceiling
+          if (b.y - b.r <= 0) {
+            b.y = b.r;
+            if (b.vy < 0) b.vy = -b.vy * BALL_RESTITUTION;
+          }
+
+          // pipes
+          for (const p of pipes) {
+            // top pipe rect
+            const rects = [
+              { x: p.x, y: 0, w: pipeWidth, h: p.top },
+              { x: p.x, y: p.top + p.gap, w: pipeWidth, h: GAME_H - (p.top + p.gap) - 48 },
+            ];
+            for (const rect of rects) {
+              // find closest point
+              const cx = Math.max(rect.x, Math.min(b.x, rect.x + rect.w));
+              const cy = Math.max(rect.y, Math.min(b.y, rect.y + rect.h));
+              const dx = b.x - cx;
+              const dy = b.y - cy;
+              const d2 = dx * dx + dy * dy;
+              if (d2 < b.r * b.r) {
+                const d = Math.sqrt(d2) || 0.001;
+                const nx = dx / d;
+                const ny = dy / d;
+                const penetration = b.r - d;
+                b.x += nx * penetration;
+                b.y += ny * penetration;
+                // reflect velocity
+                const vn = b.vx * nx + b.vy * ny;
+                if (vn < 0) {
+                  b.vx -= (1 + BALL_RESTITUTION) * vn * nx;
+                  b.vy -= (1 + BALL_RESTITUTION) * vn * ny;
+                }
+              }
+            }
+          }
+        }
+
+        // cull old balls that are far off-screen to save CPU
+        for (let i = balls.length - 1; i >= 0; i--) {
+          const b = balls[i];
+          if (b.x < -200 || b.x > GAME_W + 200 || b.y > GAME_H + 400) {
+            balls.splice(i, 1);
+          }
+        }
+      }
+
+      // Draw balls
+      function drawBalls() {
+        ctx.fillStyle = "#ffffff";
+        for (const b of balls) {
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+          ctx.fill();
+          // small shading
+          ctx.fillStyle = "rgba(0,0,0,0.06)";
+          ctx.fillRect(b.x - b.r, b.y + b.r * 0.3, b.r * 2, b.r * 0.35);
+          ctx.fillStyle = "#ffffff";
+        }
+      }
+
+      function resetGame() {
+        player.y = GAME_H / 2;
+        player.vy = 0;
+        pipes.length = 0;
+        pipeTimer = 0;
+        score = 0;
+        gameOver = false;
+        started = false;
+        scoreEl.textContent = "Score: 0";
+        highEl.textContent = "High: " + high;
+        messageEl.textContent = "Press Space or Up to start";
+      }
+
+      function spawnPipe() {
+        const gap = gapMin + Math.random() * (gapMax - gapMin);
+        const topH = 50 + Math.random() * (GAME_H - gap - 250);
+        pipes.push({ x: GAME_W + 20, top: topH, gap });
+      }
+
+      function update(dt) {
+        // Always step ball physics so spawned balls fall and collide even if gameplay hasn't started
+        updateBalls(dt);
+        if (gameOver) return;
+        if (!started) return;
+
+        // Player physics
+        player.vy += player.gravity * dt;
+        player.y += player.vy * dt;
+
+        // Floor and ceiling collision
+        if (player.y + player.h / 2 >= GAME_H - 48) {
+          player.y = GAME_H - 48 - player.h / 2;
+          onDeath();
+        }
+        if (player.y - player.h / 2 <= 0) {
+          player.y = player.h / 2;
+          player.vy = 0;
+        }
+
+        // Pipes
+        pipeTimer += dt;
+        if (pipeTimer > pipeInterval) {
+          pipeTimer -= pipeInterval;
+          spawnPipe();
+        }
+
+        for (let i = pipes.length - 1; i >= 0; i--) {
+          const p = pipes[i];
+          p.x -= pipeSpeed * dt;
+
+          // Check score (player passed pipe)
+          if (!p.passed && p.x + pipeWidth < player.x - player.w / 2) {
+            p.passed = true;
+            score += 1;
+            scoreEl.textContent = "Score: " + score;
+            if (score > high) {
+              high = score;
+              localStorage.setItem("flappy-block-high", String(high));
+              highEl.textContent = "High: " + high;
+            }
+          }
+
+          // Collision detection between player rectangle and top/bottom pipes
+          const px1 = player.x - player.w / 2;
+          const px2 = player.x + player.w / 2;
+          const py1 = player.y - player.h / 2;
+          const py2 = player.y + player.h / 2;
+
+          const pipeTopRect = { x: p.x, y: 0, w: pipeWidth, h: p.top };
+          const pipeBottomRect = { x: p.x, y: p.top + p.gap, w: pipeWidth, h: GAME_H - (p.top + p.gap) - 48 };
+
+          if (rectIntersect(px1, py1, px2, py2, pipeTopRect) || rectIntersect(px1, py1, px2, py2, pipeBottomRect)) {
+            onDeath();
+          }
+
+          // Remove offscreen
+          if (p.x + pipeWidth < -50) pipes.splice(i, 1);
+        }
+      }
+
+      function rectIntersect(px1, py1, px2, py2, rect) {
+        const rx1 = rect.x;
+        const ry1 = rect.y;
+        const rx2 = rect.x + rect.w;
+        const ry2 = rect.y + rect.h;
+        return !(px2 < rx1 || px1 > rx2 || py2 < ry1 || py1 > ry2);
+      }
+
+      function onDeath() {
+        gameOver = true;
+        messageEl.textContent = "Game Over — Press Space to restart";
+      }
+
+      function flap() {
+        if (gameOver) {
+          // restart
+          resetGame();
+          return;
+        }
+        if (!started) {
+          started = true;
+          messageEl.textContent = "";
+        }
+        player.vy = player.flapImpulse;
+        // spawn ball and play bleep
+        spawnBall();
+        playBleep();
+      }
+
+      // Bird image: embedded SVG data URL (fallback to rectangle if not loaded)
+      const birdImg = new Image();
+      const birdSVG = `
+      <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 90'>
+        <defs>
+          <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.15"/>
+          </filter>
+        </defs>
+        <g filter="url(#s)">
+          <ellipse cx="50" cy="45" rx="36" ry="24" fill="#ffd057" />
+          <path d="M78 42c10-2 18-8 28-6-6 6-12 10-18 16-8 8-16 14-28 12 6-6 12-18 18-22z" fill="#ff9f43" opacity="0.95"/>
+          <path d="M34 34c6-10 18-14 28-12l6 10c-12-4-24-2-36 8z" fill="#ffeaa7" opacity="0.95"/>
+          <circle cx="40" cy="38" r="4" fill="#333" />
+          <path d="M88 40 l14 -6 l2 6 z" fill="#ff7b2d" />
+        </g>
+      </svg>
+      `;
+      birdImg.src = "data:image/svg+xml;utf8," + encodeURIComponent(birdSVG);
+      birdImg.crossOrigin = "anonymous";
+
+      // Drawing
+      function draw() {
+        // clear
+        ctx.fillStyle = "#70c5ce";
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
+
+        // draw balls behind player and pipes
+        drawBalls();
+
+        // Draw pipes
+        for (const p of pipes) {
+          ctx.fillStyle = "#2f3542";
+          // top
+          ctx.fillRect(p.x, 0, pipeWidth, p.top);
+          // bottom
+          ctx.fillRect(p.x, p.top + p.gap, pipeWidth, GAME_H - (p.top + p.gap) - 48);
+
+          // pipe cap (simple)
+          ctx.fillStyle = "#22232a";
+          ctx.fillRect(p.x - 2, p.top - 8, pipeWidth + 4, 8);
+          ctx.fillRect(p.x - 2, p.top + p.gap, pipeWidth + 4, 8);
+        }
+
+        // Ground
+        ctx.fillStyle = "#d8a34a";
+        ctx.fillRect(0, GAME_H - 48, GAME_W, 48);
+
+        // Player
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        const tilt = Math.max(-0.6, Math.min(0.8, player.vy / 600));
+        ctx.rotate(tilt);
+        if (birdImg && birdImg.complete && birdImg.naturalWidth) {
+          // draw image centered; scale image to player.w/player.h while preserving aspect
+          const imgW = birdImg.width;
+          const imgH = birdImg.height;
+          const scale = Math.max(player.w / imgW, player.h / imgH);
+          const dw = imgW * scale;
+          const dh = imgH * scale;
+          ctx.drawImage(birdImg, -dw / 2, -dh / 2, dw, dh);
+        } else {
+          ctx.fillStyle = "#ff4757";
+          ctx.fillRect(-player.w / 2, -player.h / 2, player.w, player.h);
+        }
+        ctx.restore();
+
+        // Small shadow
+        ctx.fillStyle = "rgba(0,0,0,0.08)";
+        ctx.fillRect(player.x - player.w / 2, GAME_H - 48 - 6, player.w, 6);
+
+        // If not started, draw message in canvas too
+        if (!started && !gameOver) {
+          ctx.fillStyle = "rgba(255,255,255,0.9)";
+          ctx.font = "22px system-ui";
+          ctx.textAlign = "center";
+          ctx.fillText("Press Space or Up to start", GAME_W / 2, GAME_H / 2 + 6);
+        }
+      }
+
+      function loop(now) {
+        const dt = Math.min(0.033, (now - lastTime) / 1000);
+        lastTime = now;
+        if (running) {
+          update(dt);
+          draw();
+        }
+        requestAnimationFrame(loop);
+      }
+
+      // Input
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "Space" || e.code === "ArrowUp") {
+          e.preventDefault();
+          if (gameOver && !started) {
+            resetGame();
+            started = true;
+            messageEl.textContent = "";
+            return;
+          }
+          if (gameOver) {
+            resetGame();
+            return;
+          }
+          flap();
+        }
+      });
+      window.addEventListener("mousedown", (e) => {
+        flap();
+      });
+      window.addEventListener(
+        "touchstart",
+        (e) => {
+          e.preventDefault();
+          flap();
+        },
+        { passive: false }
+      );
+
+      // Start
+      resetGame();
+      running = true;
+      requestAnimationFrame(loop);
+    </script>
+  </body>
+</html>
