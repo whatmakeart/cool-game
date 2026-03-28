@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>Pacific Strike: Sky Dominion</title>
+<style>
+:root{
+  --bg:#04192a;
+  --panel:rgba(8,20,36,.82);
+  --line:rgba(255,255,255,.11);
+  --text:#eaf7ff;
+  --cyan:#59efff;
+  --red:#ff6676;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{
+  margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);
+  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  touch-action:none;
+}
+canvas{display:block;width:100vw;height:100vh;}
+button{
+  appearance:none;border:none;border-radius:999px;padding:12px 16px;
+  font:inherit;font-weight:800;letter-spacing:.04em;cursor:pointer;
+}
+#startOverlay,#gameOverOverlay{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  padding:24px;z-index:20;
+}
+.panel{
+  width:min(560px,92vw);color:var(--text);
+  background:linear-gradient(180deg,rgba(9,24,44,.95),rgba(8,16,28,.93));
+  border:1px solid var(--line);border-radius:24px;box-shadow:0 22px 70px rgba(0,0,0,.44);
+  padding:22px 20px 18px;backdrop-filter:blur(10px);
+}
+.panel h1{margin:0 0 8px;font-size:clamp(28px,6vw,46px);line-height:1;letter-spacing:.08em;text-transform:uppercase;}
+.panel p{margin:10px 0;color:rgba(234,247,255,.88);line-height:1.42;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 18px;}
+.tip{border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);padding:12px;font-size:14px;line-height:1.35;}
+.primaryBtn{background:linear-gradient(180deg,#82fbff,#2de4ff);color:#04131d;box-shadow:0 12px 30px rgba(45,228,255,.34);}
+.primaryBtn:active{transform:translateY(1px) scale(.995);} 
+
+#sideWrap{
+  position:absolute;left:0;top:0;bottom:0;z-index:12;pointer-events:none;
+  padding:calc(10px + env(safe-area-inset-top,0px)) 0 calc(10px + env(safe-area-inset-bottom,0px)) 0;
+}
+#sidePanel{
+  width:min(320px,74vw);max-height:calc(100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 20px);
+  margin-left:10px;overflow:auto;color:var(--text);background:var(--panel);border:1px solid var(--line);
+  border-radius:22px;box-shadow:0 16px 40px rgba(0,0,0,.3);backdrop-filter:blur(10px);
+  padding:12px 12px 14px;pointer-events:auto;transform:translateX(0);transition:transform .26s ease, opacity .26s ease;
+}
+#sideWrap.collapsed #sidePanel{transform:translateX(calc(-100% - 22px));opacity:.98;pointer-events:none;}
+#panelHandle{
+  position:absolute;left:calc(min(320px,74vw) + 8px);top:calc(18px + env(safe-area-inset-top,0px));z-index:13;
+  width:44px;height:84px;border-radius:0 18px 18px 0;background:rgba(8,20,36,.90);color:var(--text);
+  border:1px solid var(--line);border-left:none;box-shadow:0 14px 30px rgba(0,0,0,.28);
+  pointer-events:auto;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;
+  transition:left .26s ease, transform .2s ease;
+}
+#sideWrap.collapsed #panelHandle{left:0;}
+#panelHandle:active{transform:scale(.98);} 
+.sectionTitle{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:rgba(234,247,255,.62);margin:10px 0 6px;}
+.card{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);border-radius:16px;padding:10px 11px;}
+#titleCard h2{margin:0;font-size:21px;line-height:1.05;letter-spacing:.08em;text-transform:uppercase;}
+#titleCard .sub{font-size:13px;color:rgba(234,247,255,.76);margin-top:6px;}
+.stat{font-size:13px;margin:4px 0;display:flex;justify-content:space-between;gap:10px;align-items:center;}
+.pill{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:800;}
+.you{background:rgba(89,239,255,.18);color:var(--cyan);} .ai{background:rgba(255,102,118,.18);color:var(--red);} 
+.msgBar{margin-top:10px;font-size:13px;line-height:1.35;padding:9px 10px;border-radius:14px;background:rgba(0,0,0,.16);border:1px solid rgba(255,255,255,.08);}
+.legendLine{font-size:13px;line-height:1.34;margin:4px 0;color:rgba(234,247,255,.88);} .legendLine small{opacity:.72;}
+#floatingButtons{
+  position:absolute;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:12;
+  display:flex;flex-direction:column;gap:8px;
+}
+.miniBtn{pointer-events:auto;color:var(--text);background:rgba(8,20,36,.82);border:1px solid var(--line);box-shadow:0 10px 28px rgba(0,0,0,.28);padding:11px 14px;}
+
+#abilityHud{
+  position:absolute;left:50%;bottom:calc(10px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
+  z-index:12;pointer-events:auto;
+}
+.abilityShell{
+  width:min(420px,92vw);padding:10px 12px 12px;border-radius:20px;
+  color:var(--text);background:rgba(8,20,36,.84);border:1px solid var(--line);
+  box-shadow:0 16px 38px rgba(0,0,0,.28);backdrop-filter:blur(10px);
+}
+.energyRow{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+#energyLabel{font-size:12px;font-weight:800;letter-spacing:.08em;white-space:nowrap;}
+.energyTrack{flex:1;height:12px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid rgba(255,255,255,.08);}
+#energyFill{height:100%;width:0%;background:linear-gradient(90deg,#74fbff,#2de4ff 60%,#ffd76d);}
+.powerRow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.powerBtn{
+  padding:10px 8px;border-radius:16px;background:rgba(255,255,255,.05);color:var(--text);
+  border:1px solid rgba(255,255,255,.10);font-size:13px;font-weight:800;
+}
+.powerBtn small{display:block;font-size:10px;font-weight:700;opacity:.72;letter-spacing:.06em;margin-top:2px;}
+.powerBtn.armed{box-shadow:0 0 0 2px rgba(89,239,255,.55) inset, 0 0 22px rgba(89,239,255,.20);background:rgba(89,239,255,.10);}
+.powerBtn.disabled{opacity:.45;filter:saturate(.7);}
+
+.hidden{display:none!important;}
+@media (max-width:640px){
+  .grid{grid-template-columns:1fr;}
+  #sidePanel{width:min(290px,78vw);} 
+  #panelHandle{left:calc(min(290px,78vw) + 8px);} 
+}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="sideWrap" class="hidden">
+  <div id="sidePanel">
+    <div id="titleCard" class="card">
+      <h2>Pacific Strike: Sky Dominion</h2>
+      <div class="sub">Drag from a blue island to any target. Or tap a blue island, then tap several targets fast for chained attacks.</div>
+    </div>
+
+    <div class="sectionTitle">Battle</div>
+    <div class="card">
+      <div class="stat"><span class="pill you">YOU</span><span id="playerStats">0 islands • 0 planes</span></div>
+      <div class="stat"><span class="pill ai">AI</span><span id="enemyStats">0 islands • 0 planes</span></div>
+      <div class="stat"><span>Pressure</span><span id="pressureStat">Balanced</span></div>
+      <div class="stat"><span>AI</span><span id="aiStat">Adaptive</span></div>
+    </div>
+
+    <div class="sectionTitle">Status</div>
+    <div id="messageBar" class="msgBar">Tap to begin launching squadrons.</div>
+
+    <div class="sectionTitle">How To Play</div>
+    <div class="card">
+      <div class="legendLine">Drag from a friendly island to another island to send <strong>50%</strong> of its planes.</div>
+      <div class="legendLine">Tap a friendly island once, then tap multiple target islands for fast chained attacks.</div>
+      <div class="legendLine">Double-tap the selected island for a <strong>blitz strike</strong>.</div>
+    </div>
+
+    <div class="sectionTitle">Island Types</div>
+    <div class="card">
+      <div class="legendLine">⚙ <strong>Factory</strong> <small>fast production</small></div>
+      <div class="legendLine">⬟ <strong>Fortress</strong> <small>harder to capture</small></div>
+      <div class="legendLine">➤ <strong>Fuel</strong> <small>faster waves</small></div>
+      <div class="legendLine">✦ <strong>Heavy Base</strong> <small>more big planes</small></div>
+    </div>
+  </div>
+  <button id="panelHandle" aria-label="Toggle side panel">❯</button>
+</div>
+
+<div id="floatingButtons" class="hidden">
+  <button id="helpBtn" class="miniBtn">Help</button>
+  <button id="restartBtn" class="miniBtn">New Battle</button>
+</div>
+
+<div id="abilityHud" class="hidden">
+  <div class="abilityShell">
+    <div class="energyRow">
+      <div id="energyLabel">ACE 0 / 100</div>
+      <div class="energyTrack"><div id="energyFill"></div></div>
+    </div>
+    <div class="powerRow">
+      <button id="boostBtn" class="powerBtn">OVERDRIVE<small>35 • OWNED</small></button>
+      <button id="shieldBtn" class="powerBtn">SHIELD<small>45 • OWNED</small></button>
+      <button id="stormBtn" class="powerBtn">STORM<small>60 • TARGET</small></button>
+    </div>
+  </div>
+</div>
+
+
+<div id="startOverlay">
+  <div class="panel">
+    <h1>Pacific Strike</h1>
+    <p>This version fully collapses the interface off-screen, removes whole-screen shake, adds island-only impact shake, improves shorelines and reefs, reserves space for the Help controls, and supports both drag launch and quick tap-to-chain attacks.</p>
+    <div class="grid">
+      <div class="tip"><strong>Controls</strong><br>Drag from a blue island to launch 50%. Or tap a blue island to select it, then tap several target islands quickly. Double-tap the selected island for blitz.</div>
+      <div class="tip"><strong>Readability</strong><br>Blue, neutral, and enemy islands are more clearly separated, numbers match ownership, water is continuous, and each island has more visible buildings and a harbor.</div>
+    </div>
+    <button id="startBtn" class="primaryBtn">Tap To Launch</button>
+  </div>
+</div>
+
+<div id="gameOverOverlay" class="hidden">
+  <div class="panel">
+    <h1 id="gameOverTitle">Victory</h1>
+    <p id="gameOverText">You control the skies.</p>
+    <button id="againBtn" class="primaryBtn">Play Again</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d', { alpha: false });
+
+  const startOverlay = document.getElementById('startOverlay');
+  const gameOverOverlay = document.getElementById('gameOverOverlay');
+  const gameOverTitle = document.getElementById('gameOverTitle');
+  const gameOverText = document.getElementById('gameOverText');
+  const startBtn = document.getElementById('startBtn');
+  const againBtn = document.getElementById('againBtn');
+  const restartBtn = document.getElementById('restartBtn');
+  const helpBtn = document.getElementById('helpBtn');
+  const sideWrap = document.getElementById('sideWrap');
+  const panelHandle = document.getElementById('panelHandle');
+  const playerStats = document.getElementById('playerStats');
+  const enemyStats = document.getElementById('enemyStats');
+  const pressureStat = document.getElementById('pressureStat');
+  const aiStat = document.getElementById('aiStat');
+  const messageBar = document.getElementById('messageBar');
+  const floatingButtons = document.getElementById('floatingButtons');
+  const abilityHud = document.getElementById('abilityHud');
+  const energyLabel = document.getElementById('energyLabel');
+  const energyFill = document.getElementById('energyFill');
+  const boostBtn = document.getElementById('boostBtn');
+  const shieldBtn = document.getElementById('shieldBtn');
+  const stormBtn = document.getElementById('stormBtn');
+
+  const TEAM_NEUTRAL = 0;
+  const TEAM_PLAYER = 1;
+  const TEAM_ENEMY = 2;
+
+  const TEAMS = {
+    [TEAM_NEUTRAL]: { ring: '#d7e1e7', glow: 'rgba(255,255,255,0.16)', fill: '#6c7d68', fill2: '#77866f', trail: 'rgba(255,255,255,0.16)', smoke: 'rgba(255,255,255,0.28)', splash: '#ffffff', number: '#eef4f8', sand: '#dec996' },
+    [TEAM_PLAYER]: { ring: '#59efff', glow: 'rgba(89,239,255,0.34)', fill: '#318fa6', fill2: '#2a7689', trail: 'rgba(89,239,255,0.26)', smoke: 'rgba(146,250,255,0.36)', splash: '#9ef8ff', number: '#7ff8ff', sand: '#dcc68e' },
+    [TEAM_ENEMY]: { ring: '#ff6676', glow: 'rgba(255,102,118,0.30)', fill: '#945664', fill2: '#7e4955', trail: 'rgba(255,102,118,0.25)', smoke: 'rgba(255,180,188,0.34)', splash: '#ffb1bb', number: '#ff9aaa', sand: '#dfc59a' }
+  };
+
+  const ISLAND_TYPES = {
+    standard: { label: '', prod: 1.00, defense: 1.00, speed: 1.00, value: 1.00, heavyBias: 0.08 },
+    factory:  { label: '⚙', prod: 1.42, defense: 1.00, speed: 1.00, value: 1.40, heavyBias: 0.15 },
+    fortress: { label: '⬟', prod: 0.95, defense: 1.35, speed: 0.98, value: 1.35, heavyBias: 0.28 },
+    fuel:     { label: '➤', prod: 1.06, defense: 1.00, speed: 1.28, value: 1.20, heavyBias: 0.10 },
+    heavy:    { label: '✦', prod: 1.10, defense: 1.05, speed: 1.02, value: 1.34, heavyBias: 0.52 }
+  };
+
+  const PLANE_CLASSES = {
+    fighter:     { size: 0.18, speed: 1.18, hp: 1.00, smoke: 0.40, bombs: 0, bombScale: 0.0 },
+    interceptor: { size: 0.24, speed: 1.08, hp: 1.18, smoke: 0.55, bombs: 0, bombScale: 0.0 },
+    bomber:      { size: 0.36, speed: 0.82, hp: 1.55, smoke: 0.90, bombs: 2, bombScale: 0.9 },
+    heavy:       { size: 0.54, speed: 0.68, hp: 2.30, smoke: 1.25, bombs: 3, bombScale: 1.2 }
+  };
+
+  const ABILITY_COSTS = { overdrive: 35, shield: 45, storm: 60 };
+
+  let width = 0, height = 0, dpr = 1;
+  let islands = [];
+  let squadrons = [];
+  let bombs = [];
+  let particles = [];
+  let ripples = [];
+  let decals = [];
+  let clouds = [];
+  let stars = [];
+  let foamStrips = [];
+  let floatingTexts = [];
+  let isPanelCollapsed = true;
+
+  const state = {
+    mode: 'menu',
+    time: 0,
+    selectedIsland: null,
+    difficulty: 1,
+    aiClock: 0,
+    musicClock: 0,
+    messageUntil: 0,
+    backgroundCanvas: null,
+    waterPhase: 0,
+    winner: null,
+    armedPower: null,
+    energy: 0,
+    maxEnergy: 100,
+    combo: 0,
+    comboUntil: 0,
+    drag: { active: false, moved: false, source: null, target: null, x: 0, y: 0, startX: 0, startY: 0, startTime: 0, pointerId: null },
+    lastTapAt: 0,
+    lastTapIsland: null
+  };
+
+  const audio = { ctx: null, master: null };
+  const assets = { planes: {}, bombs: {}, splats: {} };
+
+  function rand(min, max){ return min + Math.random() * (max - min); }
+  function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+  function dist(ax, ay, bx, by){ return Math.hypot(bx - ax, by - ay); }
+  function angleDiff(a, b){ let d = (b - a + Math.PI) % (Math.PI * 2) - Math.PI; if (d < -Math.PI) d += Math.PI * 2; return d; }
+  function setMessage(text, dur = 2.25){ messageBar.textContent = text; state.messageUntil = state.time + dur; }
+  function panelReservedWidth(){ return Math.min(width < 640 ? 290 : 320, width * (width < 640 ? 0.78 : 0.74)) + 34; }
+
+  function addEnergy(amount){
+    state.energy = clamp(state.energy + amount, 0, state.maxEnergy);
+  }
+  function spendEnergy(amount){
+    if (state.energy < amount) return false;
+    state.energy -= amount;
+    return true;
+  }
+  function clearArmedPower(){
+    state.armedPower = null;
+  }
+  function armPower(name){
+    state.armedPower = state.armedPower === name ? null : name;
+    updateAbilityHud();
+    if (state.armedPower) setMessage(`Power armed: ${name.toUpperCase()}. Tap a valid island.`, 1.3);
+  }
+  function powerButtonClass(btn, armed, disabled){
+    btn.classList.toggle('armed', armed);
+    btn.classList.toggle('disabled', disabled);
+  }
+  function updateAbilityHud(){
+    if (state.mode !== 'running'){
+      abilityHud.classList.add('hidden');
+      return;
+    }
+    abilityHud.classList.remove('hidden');
+    energyLabel.textContent = `ACE ${Math.floor(state.energy)} / ${state.maxEnergy}`;
+    energyFill.style.width = `${(state.energy / state.maxEnergy) * 100}%`;
+    powerButtonClass(boostBtn, state.armedPower === 'overdrive', state.energy < ABILITY_COSTS.overdrive);
+    powerButtonClass(shieldBtn, state.armedPower === 'shield', state.energy < ABILITY_COSTS.shield);
+    powerButtonClass(stormBtn, state.armedPower === 'storm', state.energy < ABILITY_COSTS.storm);
+  }
+  function floatingText(x, y, text, color='#fff', size=20){
+    floatingTexts.push(new FloatingText(x, y, text, color, size));
+  }
+  function registerPlayerCapture(island){
+    if (state.time < state.comboUntil) state.combo += 1;
+    else state.combo = 1;
+    state.comboUntil = state.time + 7;
+    const reward = 10 + state.combo * 4;
+    addEnergy(reward);
+    if (state.combo > 1){
+      floatingText(island.x, island.y - island.baseRadius - 12, `COMBO x${state.combo}`, '#ffd76d', 18);
+    }
+    floatingText(island.x, island.y - island.baseRadius + 10, `+${reward} ACE`, '#7ff8ff', 16);
+  }
+  function castPowerOnIsland(power, island){
+    if (!island) return false;
+    if (power === 'overdrive'){
+      if (island.owner !== TEAM_PLAYER || !spendEnergy(ABILITY_COSTS.overdrive)) return false;
+      island.overdriveTimer = Math.max(island.overdriveTimer, 12);
+      island.capturePulse = 1;
+      floatingText(island.x, island.y - island.baseRadius - 12, 'OVERDRIVE', '#7ff8ff', 18);
+      for (let i = 0; i < 2; i++) ripples.push(new Ripple(island.x, island.y, island.baseRadius * 0.6 + i * 8, 'rgba(89,239,255,0.7)'));
+      playTone({freq: 660, type:'triangle', duration:0.18, volume:0.06, slide:1.04});
+      playTone({freq: 880, type:'triangle', duration:0.16, volume:0.05, slide:1.08, at:0.07});
+    } else if (power === 'shield'){
+      if (island.owner !== TEAM_PLAYER || !spendEnergy(ABILITY_COSTS.shield)) return false;
+      island.shield = Math.min(50, island.shield + 28);
+      island.shieldTimer = Math.max(island.shieldTimer, 12);
+      floatingText(island.x, island.y - island.baseRadius - 12, 'SHIELD', '#dffcff', 18);
+      for (let i = 0; i < 3; i++) ripples.push(new Ripple(island.x, island.y, island.baseRadius * 0.5 + i * 10, 'rgba(220,250,255,0.6)'));
+      playTone({freq: 520, type:'sine', duration:0.2, volume:0.06, slide:1.02});
+      playTone({freq: 740, type:'triangle', duration:0.15, volume:0.04, slide:1.01, at:0.05});
+    } else if (power === 'storm'){
+      if (island.owner === TEAM_PLAYER || !spendEnergy(ABILITY_COSTS.storm)) return false;
+      island.stunTimer = Math.max(island.stunTimer, 8);
+      island.beginHit(1.2);
+      const damage = 20 + Math.max(0, Math.floor(teamPlaneCount(TEAM_PLAYER) / 60));
+      island.planes = Math.max(1, island.planes - damage);
+      for (let i = 0; i < 4; i++) spawnExplosion(island.x + rand(-14, 14), island.y + rand(-14, 14), TEAM_PLAYER, 0.7 + i * 0.12, i % 2 === 0);
+      floatingText(island.x, island.y - island.baseRadius - 12, 'STORM STRIKE', '#ffd76d', 18);
+      floatingText(island.x, island.y - island.baseRadius + 8, `-${damage}`, '#ffd76d', 18);
+      playTone({freq: 880, type:'square', duration:0.07, volume:0.06, slide:0.6});
+      playNoise({duration:0.18, volume:0.05, frequency:1400});
+    } else return false;
+    clearArmedPower();
+    updateAbilityHud();
+    return true;
+  }
+
+  function resize(){
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    buildClouds();
+    buildStars();
+    buildFoam();
+    state.backgroundCanvas = null;
+  }
+
+  function svgData(svg){ return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg); }
+  function planeSVG(fillA, fillB, cockpit, stripe){
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${fillA}"/><stop offset="100%" stop-color="${fillB}"/></linearGradient><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#glow)"><path d="M90 14 L102 48 L99 60 L111 80 L102 153 L90 166 L78 153 L69 80 L81 60 L78 48 Z" fill="url(#g)"/><path d="M90 58 L22 82 L22 97 L90 86 Z" fill="url(#g)"/><path d="M90 58 L158 82 L158 97 L90 86 Z" fill="url(#g)"/><path d="M90 90 L48 81 L35 92 L90 105 Z" fill="${stripe}" fill-opacity="0.72"/><path d="M90 90 L132 81 L145 92 L90 105 Z" fill="${stripe}" fill-opacity="0.72"/><path d="M90 113 L62 136 L69 150 L90 143 L111 150 L118 136 Z" fill="${fillB}" fill-opacity="0.95"/><ellipse cx="90" cy="72" rx="10" ry="15" fill="${cockpit}" fill-opacity="0.78"/><ellipse cx="90" cy="29" rx="8" ry="8" fill="#ffffff" fill-opacity="0.88"/></g></svg>`;
+  }
+  function bombSVG(body, tip, flame){
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 90 90"><defs><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#glow)"><path d="M48 8 L55 16 L48 23 L40 16 Z" fill="#fff" fill-opacity="0.9"/><path d="M45 17 C59 17 68 28 68 39 C68 57 58 72 45 79 C32 72 22 57 22 39 C22 28 31 17 45 17 Z" fill="${body}" stroke="${tip}" stroke-width="3"/><path d="M17 24 L27 12" stroke="${flame}" stroke-width="4" stroke-linecap="round"/><path d="M22 26 L32 18" stroke="#ffffff" stroke-opacity="0.7" stroke-width="2.4" stroke-linecap="round"/><path d="M34 49 L56 49" stroke="#ffffff" stroke-opacity="0.55" stroke-width="2.4"/></g></svg>`;
+  }
+  function splatSVG(main, hot){
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="170" height="170" viewBox="0 0 170 170"><defs><radialGradient id="g" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="${hot}"/><stop offset="100%" stop-color="${main}"/></radialGradient></defs><g opacity="0.95"><path d="M85 20 C98 31 118 22 126 37 C134 52 151 54 149 72 C147 91 130 96 134 113 C138 129 125 138 109 135 C94 132 91 148 72 148 C54 148 49 131 35 128 C21 125 13 110 22 94 C31 78 17 68 24 53 C31 38 47 40 56 33 C65 26 69 15 85 20 Z" fill="url(#g)"/><circle cx="42" cy="33" r="9" fill="${hot}"/><circle cx="137" cy="48" r="8" fill="${hot}"/><circle cx="25" cy="109" r="11" fill="${hot}"/><circle cx="142" cy="118" r="10" fill="${hot}"/></g></svg>`;
+  }
+  function imgFrom(svg){ const img = new Image(); img.src = svgData(svg); return img; }
+
+  function buildAssets(){
+    assets.planes[TEAM_PLAYER] = imgFrom(planeSVG('#ffffff', '#63f2ff', '#0b1a23', '#e7ffff'));
+    assets.planes[TEAM_ENEMY] = imgFrom(planeSVG('#fff3f4', '#ff7985', '#1f0a0d', '#ffe0e3'));
+    assets.planes[TEAM_NEUTRAL] = imgFrom(planeSVG('#ffffff', '#d7e2e8', '#0e1317', '#f6fbff'));
+    assets.bombs.smallPlayer = imgFrom(bombSVG('#a8fbff', '#5be7f2', '#fff0ab'));
+    assets.bombs.smallEnemy = imgFrom(bombSVG('#ffc1c8', '#ff7580', '#ffe1a8'));
+    assets.bombs.heavyPlayer = imgFrom(bombSVG('#8cecff', '#1fd5ea', '#fff6be'));
+    assets.bombs.heavyEnemy = imgFrom(bombSVG('#ff9fac', '#ff5d6a', '#ffd078'));
+    assets.splats[TEAM_PLAYER] = imgFrom(splatSVG('#37e1ff', '#fff0a1'));
+    assets.splats[TEAM_ENEMY] = imgFrom(splatSVG('#ff5f72', '#ffd46b'));
+    assets.splats[TEAM_NEUTRAL] = imgFrom(splatSVG('#d6d6d6', '#ffffff'));
+  }
+
+  function ensureAudio(){
+    if (audio.ctx){ if (audio.ctx.state === 'suspended') audio.ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    audio.ctx = new AC();
+    audio.master = audio.ctx.createGain();
+    audio.master.gain.value = 0.15;
+    audio.master.connect(audio.ctx.destination);
+  }
+  function playTone({freq=440,type='sine',duration=0.1,volume=0.08,slide=1,at=0,pan=0}){
+    if (!audio.ctx || !audio.master) return;
+    const t0 = audio.ctx.currentTime + at;
+    const osc = audio.ctx.createOscillator();
+    const gain = audio.ctx.createGain();
+    if (audio.ctx.createStereoPanner){
+      const p = audio.ctx.createStereoPanner();
+      p.pan.value = clamp(pan, -1, 1); gain.connect(p); p.connect(audio.master);
+    } else gain.connect(audio.master);
+    osc.type = type; osc.frequency.setValueAtTime(freq, t0); osc.frequency.exponentialRampToValueAtTime(Math.max(20, freq * slide), t0 + duration);
+    gain.gain.setValueAtTime(0.0001, t0); gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume), t0 + 0.01); gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain); osc.start(t0); osc.stop(t0 + duration + 0.02);
+  }
+  function playNoise({duration=0.1,volume=0.03,pan=0,frequency=1000}){
+    if (!audio.ctx || !audio.master) return;
+    const len = Math.max(1, Math.floor(audio.ctx.sampleRate * duration));
+    const buffer = audio.ctx.createBuffer(1, len, audio.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = audio.ctx.createBufferSource(); src.buffer = buffer;
+    const filter = audio.ctx.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = frequency; filter.Q.value = 0.7;
+    const gain = audio.ctx.createGain(); gain.gain.value = volume;
+    if (audio.ctx.createStereoPanner){ const p = audio.ctx.createStereoPanner(); p.pan.value = clamp(pan,-1,1); src.connect(filter); filter.connect(gain); gain.connect(p); p.connect(audio.master); }
+    else { src.connect(filter); filter.connect(gain); gain.connect(audio.master); }
+    src.start();
+  }
+  function playLaunch(team,power,pan){ const root = team === TEAM_PLAYER ? 560 : 310; playTone({freq:root,type:'triangle',duration:0.08+power*0.025,volume:0.085,slide:0.72,pan}); playTone({freq:root*1.9,type:'square',duration:0.06,volume:0.028,slide:1.18,at:0.02,pan}); }
+  function playDive(team,pan){ const base = team === TEAM_PLAYER ? 980 : 760; playTone({freq:base,type:'sawtooth',duration:0.16,volume:0.025,slide:0.40,pan}); }
+  function playImpact(team,strong,pan){ playTone({freq:strong?165:220,type:'sawtooth',duration:strong?0.2:0.14,volume:strong?0.085:0.06,slide:0.45,pan}); playNoise({duration:strong?0.16:0.09,volume:strong?0.04:0.022,frequency:strong?1100:1500,pan}); }
+  function playCapture(team,pan){ const notes = team === TEAM_PLAYER ? [440,554,740] : [330,262,196]; notes.forEach((n,i)=>playTone({freq:n,type:'triangle',duration:0.16,volume:0.05,slide:1.02,at:i*0.07,pan})); }
+  function playMusic(dt){ if (!audio.ctx || state.mode !== 'running') return; state.musicClock += dt; if (state.musicClock < 0.52) return; state.musicClock = 0; const p = teamPlaneCount(TEAM_PLAYER), e = teamPlaneCount(TEAM_ENEMY); const danger = clamp((e-p)/170, -1, 1); const root = danger > 0 ? 196 : 220; playTone({freq:root,type:'sine',duration:0.3,volume:0.011,slide:0.98,pan:-0.2}); playTone({freq:root*(danger>0?1.5:1.25),type:'triangle',duration:0.2,volume:0.009,slide:1.01,at:0.08,pan:0.23}); }
+
+  class Island {
+    constructor(x, y, radius, owner, type='standard'){
+      this.x=x; this.y=y; this.baseRadius=radius; this.owner=owner; this.type=type;
+      this.prodBase = radius / 40;
+      this.productionRate = this.prodBase * ISLAND_TYPES[type].prod;
+      this.defense = ISLAND_TYPES[type].defense;
+      this.speedMul = ISLAND_TYPES[type].speed;
+      this.heavyBias = ISLAND_TYPES[type].heavyBias;
+      this.maxPlanes = Math.round(radius * 1.84 * ISLAND_TYPES[type].value);
+      this.planes = owner === TEAM_NEUTRAL ? Math.round(radius * rand(0.18,0.34)) : Math.round(radius * 0.55 + 12);
+      this.pulse = rand(0, Math.PI * 2);
+      this.capturePulse = 0; this.warningPulse = 0; this.hitShake = 0; this.hitPhase = rand(0, Math.PI * 2);
+      this.overdriveTimer = 0; this.shield = 0; this.shieldTimer = 0; this.stunTimer = 0;
+      this.runwayAngle = rand(-Math.PI, Math.PI);
+      this.harborAngle = rand(-Math.PI, Math.PI);
+      this.textureDots = Array.from({length: Math.round(radius * 0.6)}, () => { const a = rand(0,Math.PI*2), r = rand(0,radius*0.56); return {x:Math.cos(a)*r,y:Math.sin(a)*r,s:rand(1.2,3.4),t:Math.random()}; });
+      this.coast = []; this.inner = []; this.reef = []; this.initShape();
+    }
+    initShape(){
+      const points = 28; const p0 = rand(0, Math.PI*2), p1 = rand(0, Math.PI*2), p2 = rand(0, Math.PI*2);
+      this.coast = []; this.inner = []; this.reef = [];
+      for (let i=0;i<points;i++){
+        const a = (i/points) * Math.PI * 2;
+        const jitter = 1 + Math.sin(a*3 + p0) * 0.08 + Math.sin(a*5 + p1) * 0.05 + Math.sin(a*2 + p2) * 0.04 + rand(-0.05,0.05);
+        const coastR = this.baseRadius * clamp(jitter, 0.78, 1.24);
+        const shoreFactor = clamp(0.70 + Math.sin(a*4 + p1)*0.04 + rand(-0.03,0.03), 0.63, 0.82);
+        const reefFactor = clamp(1.10 + Math.sin(a*3 + p2)*0.08 + rand(-0.04,0.04), 1.03, 1.26);
+        this.coast.push({x:Math.cos(a)*coastR, y:Math.sin(a)*coastR});
+        this.inner.push({x:Math.cos(a)*(coastR*shoreFactor), y:Math.sin(a)*(coastR*shoreFactor)});
+        this.reef.push({x:Math.cos(a)*(coastR*reefFactor), y:Math.sin(a)*(coastR*reefFactor)});
+      }
+    }
+    update(dt){
+      this.pulse += dt * 2.2;
+      this.capturePulse = Math.max(0, this.capturePulse - dt * 1.5);
+      this.warningPulse = Math.max(0, this.warningPulse - dt * 0.9);
+      this.hitShake = Math.max(0, this.hitShake - dt * 4.8);
+      this.overdriveTimer = Math.max(0, this.overdriveTimer - dt);
+      this.shieldTimer = Math.max(0, this.shieldTimer - dt);
+      this.stunTimer = Math.max(0, this.stunTimer - dt);
+      if (this.shieldTimer <= 0) this.shield = Math.max(0, this.shield - dt * 4);
+      const prodMul = (this.overdriveTimer > 0 ? 2.0 : 1) * (this.stunTimer > 0 ? 0.5 : 1);
+      if (this.owner !== TEAM_NEUTRAL && this.planes < this.maxPlanes) this.planes = Math.min(this.maxPlanes, this.planes + this.productionRate * prodMul * dt);
+      const hostile = incomingThreat(this, this.owner === TEAM_PLAYER ? TEAM_ENEMY : TEAM_PLAYER);
+      if (this.owner !== TEAM_NEUTRAL && hostile > this.planes * 0.55) this.warningPulse = Math.min(1, this.warningPulse + dt * 1.7);
+    }
+    structureLevel(){ const ratio = this.planes / Math.max(1,this.maxPlanes); if (ratio>0.82) return 4; if (ratio>0.62) return 3; if (ratio>0.38) return 2; if (ratio>0.18) return 1; return 0; }
+    beginHit(power=1){ this.hitShake = Math.max(this.hitShake, Math.min(1.4, power)); }
+    path(ctx, pts){ ctx.beginPath(); pts.forEach((v,i)=> i ? ctx.lineTo(v.x,v.y) : ctx.moveTo(v.x,v.y)); ctx.closePath(); }
+    draw(ctx){
+      const team = TEAMS[this.owner];
+      const selected = this === state.selectedIsland;
+      const pulseScale = selected ? 1 + Math.sin(this.pulse * 8) * 0.045 : 1;
+      const radius = this.baseRadius * pulseScale;
+      const shakeX = this.hitShake > 0 ? Math.sin(state.time * 48 + this.hitPhase) * this.hitShake * 2.4 : 0;
+      const shakeY = this.hitShake > 0 ? Math.cos(state.time * 42 + this.hitPhase * 1.3) * this.hitShake * 2.1 : 0;
+
+      ctx.save();
+      ctx.translate(this.x + shakeX, this.y + shakeY);
+
+      const reefGrad = ctx.createRadialGradient(0, 0, radius * 0.2, 0, 0, radius * 1.35);
+      reefGrad.addColorStop(0, 'rgba(124,218,255,0.14)');
+      reefGrad.addColorStop(1, 'rgba(124,218,255,0)');
+      ctx.fillStyle = reefGrad;
+      this.path(ctx, this.reef); ctx.fill();
+
+      if (this.overdriveTimer > 0){
+        ctx.save();
+        ctx.strokeStyle = 'rgba(89,239,255,0.7)';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([10, 8]);
+        ctx.rotate(state.time * 0.9);
+        ctx.beginPath(); ctx.arc(0, 0, radius + 10, 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+      if (this.shield > 0){
+        ctx.save();
+        ctx.strokeStyle = 'rgba(225,250,255,0.55)';
+        ctx.lineWidth = 2 + this.shield / 28;
+        ctx.beginPath(); ctx.arc(0, 0, radius + 6, Math.PI * 1.02, Math.PI * 1.98); ctx.stroke();
+        ctx.globalAlpha = 0.18 + Math.sin(state.time * 8) * 0.04;
+        ctx.fillStyle = 'rgba(205,245,255,0.20)';
+        ctx.beginPath(); ctx.arc(0, 0, radius + 4, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+      if (this.stunTimer > 0){
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,215,110,0.7)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-radius * 0.4, -radius * 0.7);
+        ctx.lineTo(-radius * 0.18, -radius * 0.35);
+        ctx.lineTo(-radius * 0.05, -radius * 0.42);
+        ctx.lineTo(radius * 0.15, -radius * 0.02);
+        ctx.lineTo(radius * 0.02, -radius * 0.08);
+        ctx.lineTo(radius * 0.32, radius * 0.28);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      if (this.capturePulse > 0 || this.warningPulse > 0){
+        ctx.save();
+        ctx.globalAlpha = 0.28 + this.capturePulse * 0.34 + this.warningPulse * 0.22;
+        ctx.strokeStyle = this.warningPulse > this.capturePulse ? 'rgba(255,218,105,0.78)' : team.glow;
+        ctx.lineWidth = 2 + this.capturePulse * 4 + this.warningPulse * 2;
+        ctx.beginPath(); ctx.arc(0, 0, radius + 16 + this.capturePulse * 8, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+      }
+
+      ctx.shadowColor = team.ring; ctx.shadowBlur = selected ? 24 : 11; ctx.lineJoin = 'round';
+      ctx.fillStyle = team.sand; this.path(ctx, this.coast); ctx.fill();
+
+      const landGrad = ctx.createLinearGradient(-radius, -radius, radius, radius);
+      landGrad.addColorStop(0, team.fill); landGrad.addColorStop(1, team.fill2);
+      ctx.fillStyle = landGrad; this.path(ctx, this.inner); ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.save(); this.path(ctx, this.inner); ctx.clip();
+      for (const d of this.textureDots){ ctx.fillStyle = d.t > 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(22,50,21,0.12)'; ctx.beginPath(); ctx.arc(d.x,d.y,d.s*(0.8+Math.sin(state.time*0.6+d.t*6)*0.08),0,Math.PI*2); ctx.fill(); }
+      this.drawStructures(ctx, radius); ctx.restore();
+
+      ctx.strokeStyle = team.ring; ctx.lineWidth = selected ? 4.7 : 3; this.path(ctx, this.coast); ctx.stroke();
+
+      this.drawHarbor(ctx, radius);
+
+      ctx.save();
+      ctx.rotate(this.runwayAngle);
+      const rlen = radius * 0.92;
+      ctx.strokeStyle = 'rgba(33,44,49,0.92)'; ctx.lineWidth = Math.max(3, radius * 0.12); ctx.beginPath(); ctx.moveTo(-rlen*0.34,0); ctx.lineTo(rlen*0.34,0); ctx.stroke();
+      ctx.setLineDash([6,4]); ctx.lineWidth = 1.3; ctx.strokeStyle='rgba(255,255,255,0.62)'; ctx.beginPath(); ctx.moveTo(-rlen*0.26,0); ctx.lineTo(rlen*0.26,0); ctx.stroke(); ctx.setLineDash([]);
+      ctx.restore();
+
+      ctx.restore();
+
+      ctx.save();
+      ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.strokeStyle='rgba(0,0,0,0.75)'; ctx.lineWidth=4; ctx.font=`800 ${Math.round(clamp(radius*0.40,16,29))}px Inter,system-ui,sans-serif`;
+      const txt = String(Math.floor(this.planes));
+      ctx.strokeText(txt, this.x + shakeX, this.y + shakeY + 1);
+      ctx.fillStyle = team.number; ctx.fillText(txt, this.x + shakeX, this.y + shakeY + 1);
+      if (this.type !== 'standard'){
+        ctx.font = `700 ${Math.round(clamp(radius*0.35,14,23))}px Inter,system-ui,sans-serif`;
+        ctx.fillStyle = this.type === 'factory' ? '#ffe885' : this.type === 'fortress' ? '#edf8ff' : this.type === 'fuel' ? '#ffd3a2' : '#ffe6b5';
+        ctx.strokeText(ISLAND_TYPES[this.type].label, this.x + shakeX, this.y + shakeY - radius*0.74);
+        ctx.fillText(ISLAND_TYPES[this.type].label, this.x + shakeX, this.y + shakeY - radius*0.74);
+      }
+      ctx.restore();
+    }
+    drawStructures(ctx, radius){
+      const level = this.structureLevel(); if (level <= 0) return;
+      const topColor = this.owner === TEAM_PLAYER ? '#dffcff' : this.owner === TEAM_ENEMY ? '#ffe4e8' : '#f2f5f7';
+      const leftColor = this.owner === TEAM_PLAYER ? '#8eefff' : this.owner === TEAM_ENEMY ? '#ff9eaa' : '#cfd6dc';
+      const rightColor = this.owner === TEAM_PLAYER ? '#56d3ea' : this.owner === TEAM_ENEMY ? '#e36c7b' : '#a7b1ba';
+      const outline = 'rgba(0,0,0,0.24)';
+      const isoBlock = (x,y,w,d,h) => {
+        ctx.save(); ctx.translate(x,y);
+        ctx.beginPath(); ctx.moveTo(0,-h); ctx.lineTo(w*0.5,-h+d*0.28); ctx.lineTo(0,-h+d*0.56); ctx.lineTo(-w*0.5,-h+d*0.28); ctx.closePath(); ctx.fillStyle=topColor; ctx.fill(); ctx.strokeStyle=outline; ctx.lineWidth=1; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-w*0.5,-h+d*0.28); ctx.lineTo(0,-h+d*0.56); ctx.lineTo(0,0); ctx.lineTo(-w*0.5,-d*0.28); ctx.closePath(); ctx.fillStyle=leftColor; ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(w*0.5,-h+d*0.28); ctx.lineTo(0,-h+d*0.56); ctx.lineTo(0,0); ctx.lineTo(w*0.5,-d*0.28); ctx.closePath(); ctx.fillStyle=rightColor; ctx.fill(); ctx.stroke();
+        ctx.restore();
+      };
+      const hangar = (x,y,w,h) => {
+        ctx.save(); ctx.translate(x,y);
+        ctx.beginPath(); ctx.moveTo(-w*0.5,0); ctx.lineTo(-w*0.5,-h*0.35); ctx.quadraticCurveTo(0,-h,w*0.5,-h*0.35); ctx.lineTo(w*0.5,0); ctx.closePath(); ctx.fillStyle=leftColor; ctx.fill(); ctx.strokeStyle=outline; ctx.lineWidth=1; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-w*0.36,-h*0.18); ctx.quadraticCurveTo(0,-h*0.55,w*0.36,-h*0.18); ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=1.4; ctx.stroke();
+        ctx.restore();
+      };
+      const tower = (x,y,h,w) => {
+        isoBlock(x,y,w,w*0.85,h);
+        ctx.save(); ctx.translate(x,y-h); ctx.strokeStyle=rightColor; ctx.lineWidth=1.8; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-w*0.55); ctx.stroke(); ctx.beginPath(); ctx.arc(0,-w*0.7,w*0.18,0,Math.PI*2); ctx.fillStyle=topColor; ctx.fill(); ctx.strokeStyle=outline; ctx.stroke(); ctx.restore();
+      };
+      const tank = (x,y,r) => {
+        ctx.save(); ctx.translate(x,y); ctx.fillStyle=leftColor; ctx.beginPath(); ctx.ellipse(0,0,r,r*0.52,0,0,Math.PI*2); ctx.fill(); ctx.strokeStyle=outline; ctx.lineWidth=1; ctx.stroke(); ctx.fillStyle=topColor; ctx.beginPath(); ctx.ellipse(0,-r*0.28,r*0.9,r*0.4,0,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
+      };
+      const radar = (x,y,r) => {
+        ctx.save(); ctx.translate(x,y); ctx.strokeStyle=leftColor; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-r*1.2); ctx.stroke(); ctx.beginPath(); ctx.arc(0,-r*1.42,r,-Math.PI*0.35,Math.PI*0.15); ctx.stroke(); ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=1.1; ctx.beginPath(); ctx.arc(0,-r*1.42,r*0.62,-Math.PI*0.26,Math.PI*0.06); ctx.stroke(); ctx.restore();
+      };
+      ctx.save(); ctx.translate(0, radius*0.1);
+      if (level>=1){ hangar(-radius*0.18,0,radius*0.30,radius*0.22); tower(radius*0.16,0,radius*0.24,radius*0.15); }
+      if (level>=2){ tank(radius*0.32,radius*0.07,radius*0.10); hangar(0,radius*0.10,radius*0.22,radius*0.16); }
+      if (level>=3){ tower(-radius*0.04,-radius*0.03,radius*0.31,radius*0.16); radar(-radius*0.34,radius*0.07,radius*0.10); }
+      if (level>=4){ tower(radius*0.32,-radius*0.06,radius*0.38,radius*0.16); tank(-radius*0.08,radius*0.14,radius*0.11); }
+      ctx.restore();
+    }
+    drawHarbor(ctx, radius){
+      const a = this.harborAngle;
+      const nx = Math.cos(a), ny = Math.sin(a);
+      const tx = -ny, ty = nx;
+      const px = nx * radius * 0.86;
+      const py = ny * radius * 0.86;
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.strokeStyle = 'rgba(36,44,52,0.85)';
+      ctx.lineWidth = Math.max(2, radius * 0.06);
+      ctx.beginPath();
+      ctx.moveTo(-tx * radius * 0.10, -ty * radius * 0.10);
+      ctx.lineTo(nx * radius * 0.26 - tx * radius * 0.12, ny * radius * 0.26 - ty * radius * 0.12);
+      ctx.lineTo(nx * radius * 0.26 + tx * radius * 0.12, ny * radius * 0.26 + ty * radius * 0.12);
+      ctx.lineTo(tx * radius * 0.10, ty * radius * 0.10);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(nx * radius * 0.11, ny * radius * 0.11);
+      ctx.lineTo(nx * radius * 0.23, ny * radius * 0.23);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  class Squadron {
+    constructor(source,target,count,owner,opts={}){
+      this.source=source; this.target=target; this.count=count; this.owner=owner; this.isBlitz=!!opts.isBlitz; this.spawnDelay=opts.spawnDelay||0;
+      this.x=source.x; this.y=source.y; this.prevX=source.x; this.prevY=source.y; this.vx=0; this.vy=0;
+      this.heading=Math.atan2(target.y-source.y,target.x-source.x); this.angle=this.heading; this.bank=0; this.dive=0; this.time=0; this.weave=rand(0,Math.PI*2);
+      this.trail=[]; this.trailMax=10; this.planes=buildPlaneFormation(source,count,this.isBlitz,opts.index||0); this.speed=this.computeSpeed()*(source.speedMul||1)*(opts.speedMul||1); this.turnRate=rand(2.5,3.9); this.bombTimer=rand(0.22,0.45);
+    }
+    computeSpeed(){ let total=0; for (const p of this.planes) total+=PLANE_CLASSES[p.type].speed; return (84+Math.sqrt(this.count)*4.2)*(total/Math.max(1,this.planes.length)); }
+    strongestBombClass(){ let best=null,rank=-1; for (const p of this.planes){ const r=PLANE_CLASSES[p.type].bombScale; if (r>rank){rank=r; best=p.type;} } return best; }
+    update(dt){
+      this.time += dt;
+      if (this.spawnDelay > 0){ this.spawnDelay -= dt; return false; }
+      const desired = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+      const turn = angleDiff(this.angle, desired);
+      this.angle += turn * clamp(this.turnRate * dt, 0, 1);
+      const weaveForce = Math.sin(this.time * 6 + this.weave) * 5;
+      this.prevX = this.x; this.prevY = this.y;
+      this.x += Math.cos(this.angle) * this.speed * dt - Math.sin(this.angle) * weaveForce * 0.016;
+      this.y += Math.sin(this.angle) * this.speed * dt + Math.cos(this.angle) * weaveForce * 0.016;
+      this.vx = this.x - this.prevX; this.vy = this.y - this.prevY;
+      this.heading = Math.atan2(this.vy || Math.sin(this.angle), this.vx || Math.cos(this.angle));
+      this.bank = clamp(turn * 2.6 + Math.sin(this.time * 4 + this.weave) * 0.08, -1, 1);
+      const d = dist(this.x, this.y, this.target.x, this.target.y);
+      this.dive = clamp(1 - d / 180, 0, 1);
+      this.trail.push({x:this.x,y:this.y,a:this.heading,dive:this.dive}); if (this.trail.length > this.trailMax) this.trail.shift();
+      for (const p of this.planes){ if (Math.random() < (0.42 + PLANE_CLASSES[p.type].smoke * 0.22)) spawnSmoke(this.x,this.y,this.heading,this.owner,PLANE_CLASSES[p.type].smoke,p.type==='heavy'); }
+      this.bombTimer -= dt;
+      if (d < 170 && this.bombTimer <= 0){ const bombType = this.strongestBombClass(); if (bombType && PLANE_CLASSES[bombType].bombs > 0){ this.bombTimer = rand(0.12,0.22); spawnBombFromSquadron(this,bombType); } }
+      if (d < this.target.baseRadius * 0.9){ resolveArrival(this,this.target); return true; }
+      return false;
+    }
+    draw(ctx){
+      if (this.spawnDelay > 0) return;
+      ctx.save(); ctx.lineCap='round';
+      for (let i=0;i<this.trail.length;i++){ const t=this.trail[i], a=(i+1)/this.trail.length; ctx.strokeStyle=this.owner===TEAM_PLAYER?`rgba(89,239,255,${0.03+a*0.08})`:`rgba(255,102,118,${0.03+a*0.08})`; ctx.lineWidth=1+a*2.0; ctx.beginPath(); ctx.moveTo(t.x-Math.cos(t.a)*(10+t.dive*4), t.y-Math.sin(t.a)*(10+t.dive*4)); ctx.lineTo(t.x,t.y); ctx.stroke(); }
+      ctx.restore();
+      for (const p of this.planes){ const conf=PLANE_CLASSES[p.type]; const wobbleX=Math.sin(this.time*6+p.phase)*2.2; const wobbleY=Math.cos(this.time*5+p.phase)*2.0; const ox=p.ox+wobbleX, oy=p.oy+wobbleY; const px=this.x+Math.cos(this.heading)*oy-Math.sin(this.heading)*ox; const py=this.y+Math.sin(this.heading)*oy+Math.cos(this.heading)*ox; drawPlaneSprite(ctx,assets.planes[this.owner],px,py,this.heading,conf.size*p.scale,TEAMS[this.owner].ring,this.bank,this.dive); }
+      ctx.save(); ctx.textAlign='center'; ctx.textBaseline='bottom'; ctx.font=`800 ${this.isBlitz?15:13}px Inter,system-ui,sans-serif`; ctx.strokeStyle='rgba(0,0,0,0.72)'; ctx.lineWidth=3; const txt=this.count>=100?String(Math.round(this.count)):String(Math.floor(this.count)); ctx.strokeText(txt,this.x,this.y-22); ctx.fillStyle='#fff'; ctx.fillText(txt,this.x,this.y-22); ctx.restore();
+    }
+  }
+
+  class Bomb {
+    constructor(x,y,target,owner,kind){ this.x=x; this.y=y; this.target=target; this.owner=owner; this.kind=kind; const conf=PLANE_CLASSES[kind]; this.scale=conf.bombScale||0.8; this.life=rand(0.42,0.82); this.angle=rand(-1,1); const aim=Math.atan2(target.y-y,target.x-x); const sp=rand(120,170)*this.scale; this.vx=Math.cos(aim)*sp+rand(-18,18); this.vy=Math.sin(aim)*sp+rand(-12,12); this.spin=rand(-7,7); this.exploded=false; }
+    update(dt){ this.life-=dt; this.vy+=128*dt; this.x+=this.vx*dt; this.y+=this.vy*dt; this.angle+=this.spin*dt; if (Math.random()<0.58) spawnBombSmoke(this.x,this.y,this.owner,this.kind==='heavy'); if (this.life<=0||dist(this.x,this.y,this.target.x,this.target.y)<this.target.baseRadius*0.72){ this.explode(); return true; } return false; }
+    explode(){ if (this.exploded) return; this.exploded=true; const pan=clamp((this.x/Math.max(1,width))*2-1,-1,1); spawnExplosion(this.x,this.y,this.owner,this.kind==='heavy'?1.0:0.74,true); playImpact(this.owner,this.kind==='heavy',pan); }
+    draw(ctx){ const img=this.kind==='heavy'?(this.owner===TEAM_PLAYER?assets.bombs.heavyPlayer:assets.bombs.heavyEnemy):(this.owner===TEAM_PLAYER?assets.bombs.smallPlayer:assets.bombs.smallEnemy); drawSprite(ctx,img,this.x,this.y,this.angle,this.kind==='heavy'?0.34:0.25,'rgba(255,255,255,0.24)'); }
+  }
+
+  class Particle { constructor(x,y,vx,vy,life,color,size,glow=0,decay=1){ this.x=x; this.y=y; this.vx=vx; this.vy=vy; this.life=life; this.maxLife=life; this.color=color; this.size=size; this.glow=glow; this.decay=decay; } update(dt){ this.life-=dt*this.decay; this.x+=this.vx*dt; this.y+=this.vy*dt; this.vx*=0.986; this.vy*=0.986; this.vy+=8*dt; return this.life<=0; } draw(ctx){ const a=clamp(this.life/this.maxLife,0,1); ctx.save(); ctx.globalAlpha=a; if (this.glow>0){ ctx.shadowColor=this.color; ctx.shadowBlur=this.glow; } ctx.fillStyle=this.color; ctx.beginPath(); ctx.arc(this.x,this.y,this.size*(0.45+a*0.55),0,Math.PI*2); ctx.fill(); ctx.restore(); } }
+  class Ripple { constructor(x,y,r,color){ this.x=x; this.y=y; this.r=r; this.life=0.65; this.maxLife=0.65; this.color=color; } update(dt){ this.life-=dt; this.r+=dt*50; return this.life<=0; } draw(ctx){ const a=clamp(this.life/this.maxLife,0,1); ctx.save(); ctx.globalAlpha=a*0.56; ctx.strokeStyle=this.color; ctx.lineWidth=2.1; ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.stroke(); ctx.restore(); } }
+  class Decal { constructor(x,y,owner,scale=1){ this.x=x; this.y=y; this.owner=owner; this.scale=scale; this.rot=rand(-Math.PI,Math.PI); this.life=0.58; this.maxLife=0.58; } update(dt){ this.life-=dt; return this.life<=0; } draw(ctx){ ctx.save(); ctx.globalAlpha=clamp(this.life/this.maxLife,0,1)*0.88; drawSprite(ctx,assets.splats[this.owner],this.x,this.y,this.rot,0.28*this.scale,null); ctx.restore(); } }
+
+
+  class FloatingText {
+    constructor(x, y, text, color='#fff', size=18){
+      this.x = x; this.y = y; this.text = text; this.color = color; this.size = size;
+      this.life = 1.2; this.maxLife = 1.2; this.vy = -18;
+    }
+    update(dt){
+      this.life -= dt;
+      this.y += this.vy * dt;
+      return this.life <= 0;
+    }
+    draw(ctx){
+      const a = clamp(this.life / this.maxLife, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `900 ${this.size}px Inter, system-ui, sans-serif`;
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(0,0,0,0.65)';
+      ctx.strokeText(this.text, this.x, this.y);
+      ctx.fillStyle = this.color;
+      ctx.fillText(this.text, this.x, this.y);
+      ctx.restore();
+    }
+  }
+
+  function drawPlaneSprite(ctx,img,x,y,heading,scale,glow,bank=0,dive=0){
+    const w=img.width||128,h=img.height||128; const rot=heading+Math.PI*0.5+bank*0.18; const sx=scale*(1+Math.abs(bank)*0.12+dive*0.12); const sy=scale*(1-Math.abs(bank)*0.09+dive*0.06);
+    ctx.save(); ctx.translate(x+bank*5+dive*3,y+5+dive*7); ctx.rotate(rot); ctx.scale(sx*1.02,sy*1.02); ctx.globalAlpha=0.18; ctx.drawImage(img,-w*0.5,-h*0.5,w,h); ctx.restore();
+    ctx.save(); ctx.translate(x,y); ctx.rotate(rot); ctx.scale(sx,sy); if (glow){ ctx.shadowColor=glow; ctx.shadowBlur=12; } ctx.drawImage(img,-w*0.5,-h*0.5,w,h); ctx.restore();
+  }
+  function drawSprite(ctx,img,x,y,angle,scale,glow){ const w=img.width||128,h=img.height||128; ctx.save(); ctx.translate(x,y); ctx.rotate(angle); if (glow){ ctx.shadowColor=glow; ctx.shadowBlur=12; } ctx.drawImage(img,-w*scale*0.5,-h*scale*0.5,w*scale,h*scale); ctx.restore(); }
+
+  function buildClouds(){ clouds=[]; const count=Math.max(7,Math.round((width*height)/92000)); for (let i=0;i<count;i++) clouds.push({x:rand(0,width),y:rand(0,height),r:rand(24,76),a:rand(0.015,0.05),drift:rand(2,12),phase:rand(0,Math.PI*2)}); }
+  function buildStars(){ stars=[]; const count=Math.max(24,Math.round((width*height)/18000)); for (let i=0;i<count;i++) stars.push({x:rand(0,width),y:rand(0,height),s:rand(0.6,2.2),a:rand(0.04,0.14),phase:rand(0,Math.PI*2)}); }
+  function buildFoam(){ foamStrips=[]; const count=Math.max(12,Math.round(width/120)); for (let i=0;i<count;i++) foamStrips.push({y:rand(0,height),amp:rand(3,9),len:rand(90,220),spd:rand(10,26),phase:rand(0,Math.PI*2)}); }
+  function buildBackground(){
+    if (state.backgroundCanvas) return state.backgroundCanvas;
+    const off=document.createElement('canvas'); off.width=Math.max(1,Math.floor(width)); off.height=Math.max(1,Math.floor(height)); const o=off.getContext('2d');
+    const grad=o.createLinearGradient(0,0,0,off.height); grad.addColorStop(0,'#0b436b'); grad.addColorStop(0.35,'#0b3558'); grad.addColorStop(1,'#07243c'); o.fillStyle=grad; o.fillRect(0,0,off.width,off.height);
+    for (let i=0;i<Math.max(80,Math.round((off.width*off.height)/12000));i++){ const x=Math.random()*off.width,y=Math.random()*off.height,r=18+Math.random()*110; const g=o.createRadialGradient(x,y,0,x,y,r); g.addColorStop(0,`rgba(90,185,235,${0.02+Math.random()*0.04})`); g.addColorStop(1,'rgba(90,185,235,0)'); o.fillStyle=g; o.beginPath(); o.arc(x,y,r,0,Math.PI*2); o.fill(); }
+    for (let i=0;i<Math.max(140,Math.round(off.width/6));i++){ o.strokeStyle=`rgba(255,255,255,${0.018+Math.random()*0.03})`; o.lineWidth=0.5+Math.random()*1.6; o.beginPath(); const x=Math.random()*off.width,y=Math.random()*off.height,len=24+Math.random()*120; o.moveTo(x,y); o.bezierCurveTo(x+len*0.25,y+Math.random()*24-12,x+len*0.62,y+Math.random()*24-12,x+len,y+Math.random()*18-9); o.stroke(); }
+    state.backgroundCanvas=off; return off;
+  }
+
+  function spawnSmoke(x,y,angle,owner,strength=1,heavy=false){ const team=TEAMS[owner]; particles.push(new Particle(x-Math.cos(angle)*rand(5,11),y-Math.sin(angle)*rand(5,11),-Math.cos(angle)*rand(8,18)*strength+rand(-4,4),-Math.sin(angle)*rand(8,18)*strength+rand(-4,4),rand(0.18,heavy?0.42:0.3),heavy?team.smoke.replace('0.36','0.42').replace('0.34','0.40').replace('0.28','0.34'):team.smoke,rand(1.4,heavy?3.3:2.5),heavy?4:0,1.22)); }
+  function spawnBombSmoke(x,y,owner,heavy=false){ const c=owner===TEAM_PLAYER?'rgba(184,252,255,0.46)':'rgba(255,193,199,0.44)'; particles.push(new Particle(x+rand(-3,3),y+rand(-3,3),rand(-7,7),rand(-10,3),rand(0.22,heavy?0.46:0.34),c,rand(1.4,heavy?3.2:2.5),0,1.18)); }
+  function spawnExplosion(x,y,owner,power=1,small=false){ const core=owner===TEAM_PLAYER?'#9ef8ff':owner===TEAM_ENEMY?'#ff9ca6':'#ffffff'; const hot='#ffd65e'; const count=Math.round((small?8:14)*power); for (let i=0;i<count;i++){ const a=rand(0,Math.PI*2), sp=rand(24,small?72:120)*power; particles.push(new Particle(x,y,Math.cos(a)*sp,Math.sin(a)*sp,rand(0.22,0.68),i%3===0?hot:core,rand(1.8,3.8)*power,10,1)); } decals.push(new Decal(x+rand(-8,8),y+rand(-8,8),owner,power)); ripples.push(new Ripple(x,y,8+power*5,owner===TEAM_PLAYER?'rgba(105,245,255,0.62)':owner===TEAM_ENEMY?'rgba(255,102,118,0.62)':'rgba(255,255,255,0.62)')); }
+
+  function buildPlaneFormation(source,count,isBlitz,index){ const ratio=source.planes/Math.max(1,source.maxPlanes); const heavyChance=clamp(source.heavyBias+ratio*0.18+(isBlitz?0.08:0),0.04,0.78); const bomberChance=clamp(0.16+ratio*0.18+(source.type==='fortress'?0.1:0),0.12,0.44); const interceptorChance=clamp(0.16+(source.type==='fuel'?0.16:0)+(source.type==='factory'?0.1:0),0.12,0.42); const slots=clamp(Math.round(count/(isBlitz?7:10)),2,isBlitz?10:7); const arr=[]; for (let i=0;i<slots;i++){ let type='fighter'; const r=Math.random(); if (r<heavyChance) type='heavy'; else if (r<heavyChance+bomberChance) type='bomber'; else if (r<heavyChance+bomberChance+interceptorChance) type='interceptor'; const row=Math.floor(i/3), col=i%3, colOffset=(col-1)*(14+row*3); arr.push({type,ox:colOffset+rand(-2.4,2.4)+index*rand(-1.2,1.2),oy:4+row*10+rand(-2,2),phase:rand(0,Math.PI*2),scale:rand(0.92,type==='heavy'?1.12:1.04)}); } return arr; }
+  function incomingThreat(island,hostileTeam){ let hostile=0,friendly=0; for (const sq of squadrons){ if (sq.target!==island) continue; if (sq.owner===hostileTeam) hostile+=sq.count; else if (sq.owner===island.owner) friendly+=sq.count; } return Math.max(0,hostile-friendly); }
+  function spawnBombFromSquadron(sq,kind){ bombs.push(new Bomb(sq.x,sq.y,sq.target,sq.owner,kind)); const pan=clamp((sq.x/Math.max(1,width))*2-1,-1,1); playDive(sq.owner,pan); }
+  function splitCount(total,groups){ const out=[]; let remain=total; for (let i=0;i<groups;i++){ const left=groups-i; const n=i===groups-1?remain:Math.max(1,Math.round(remain/left+rand(-2,2))); out.push(n); remain-=n; } if (remain!==0) out[out.length-1]+=remain; return out; }
+
+  function launchWave(source,target,fraction=0.5,opts={}){
+    if (!source || !target || source===target || source.owner===TEAM_NEUTRAL) return false;
+    const total=Math.max(1,Math.floor(source.planes*fraction)); if (total<=0) return false;
+    source.planes-=total; source.capturePulse=0.45;
+    const groups=clamp(Math.round(total/(opts.isBlitz?10:14)),2,opts.isBlitz?9:6); const parts=splitCount(total,groups);
+    parts.forEach((count,i)=>{ squadrons.push(new Squadron(source,target,count,source.owner,{isBlitz:!!opts.isBlitz,spawnDelay:i*(opts.isBlitz?0.05:0.08),speedMul:opts.isBlitz?1.12:1,index:i})); });
+    const pan=clamp((source.x/Math.max(1,width))*2-1,-1,1); playLaunch(source.owner,Math.min(2.4,total/22),pan); return true;
+  }
+
+  function resolveArrival(sq,island){
+    const pan=clamp((island.x/Math.max(1,width))*2-1,-1,1); let attackValue=0; for (const p of sq.planes) attackValue+=PLANE_CLASSES[p.type].hp; attackValue+=sq.count*0.16; const power=clamp(attackValue/18,0.55,sq.isBlitz?2.0:1.35); spawnExplosion(sq.x,sq.y,sq.owner,power,false); island.beginHit(power*0.55);
+    if (sq.owner===island.owner){ island.planes=Math.min(island.maxPlanes,island.planes+sq.count); island.capturePulse=0.42; playImpact(sq.owner,false,pan); return; }
+    let effective=attackValue/(island.defense||1);
+    if (island.shield > 0){
+      const absorbed = Math.min(island.shield, effective * 0.72);
+      island.shield -= absorbed;
+      effective -= absorbed;
+      floatingText(island.x, island.y - island.baseRadius - 4, `SHIELD ${Math.round(absorbed)}`, '#dffcff', 14);
+      if (island.shield <= 0) playTone({freq: 320, type:'triangle', duration:0.14, volume:0.05, slide:0.7, pan});
+    }
+    island.planes-=effective; island.capturePulse=0.9; playImpact(sq.owner,effective>island.baseRadius*0.44,pan);
+    if (island.planes<0){ island.owner=sq.owner; island.planes=Math.max(1,Math.abs(island.planes)); applyIslandType(island,island.type); island.warningPulse=0; island.capturePulse=1; playCapture(sq.owner,pan); setMessage(sq.owner===TEAM_PLAYER?'Island captured. Airspace expanding.':'Enemy capture detected. Strike back.',2.4); if (sq.owner===TEAM_PLAYER) registerPlayerCapture(island); }
+  }
+
+  function applyIslandType(island,type){ island.type=type; island.productionRate=island.prodBase*ISLAND_TYPES[type].prod; island.defense=ISLAND_TYPES[type].defense; island.speedMul=ISLAND_TYPES[type].speed; island.heavyBias=ISLAND_TYPES[type].heavyBias; island.maxPlanes=Math.round(island.baseRadius*1.84*ISLAND_TYPES[type].value); }
+
+  function invalidSpawnZone(x,y,r){
+    const buttonPad = 16;
+    const buttonZoneW = 210;
+    const buttonZoneH = 176;
+    if (x > width - buttonZoneW - r - buttonPad && y > height - buttonZoneH - r - buttonPad) return true;
+    return false;
+  }
+
+  function buildMap(){
+    islands=[]; squadrons=[]; bombs=[]; particles=[]; ripples=[]; decals=[];
+    const safeTop=72, safeBottom=46;
+    const reservedArea = 210 * 176;
+    const usableArea = Math.max(1, width * height - reservedArea);
+    let count = clamp(Math.floor(usableArea / 52000), 7, 13);
+    for (let i=0;i<count;i++){
+      let placed=false;
+      for (let a=0;a<420 && !placed;a++){
+        const radius=rand(28,54); const x=rand(radius+16,width-radius-16); const y=rand(radius+safeTop,height-radius-safeBottom);
+        if (invalidSpawnZone(x,y,radius)) continue;
+        let ok=true; for (const other of islands){ if (dist(x,y,other.x,other.y) < radius + other.baseRadius + 42){ ok=false; break; } }
+        if (!ok) continue;
+        const bag=['standard','standard','standard','factory','fortress','fuel','heavy']; const type=(i<2||i>count-3)?'standard':bag[Math.floor(Math.random()*bag.length)]; islands.push(new Island(x,y,radius,TEAM_NEUTRAL,type)); placed=true;
+      }
+    }
+    if (islands.length < 6){
+      // Fallback for narrow mobile screens: use fewer islands and looser packing.
+      islands=[];
+      count = 6;
+      for (let i=0;i<count;i++){
+        let placed=false;
+        for (let a=0;a<520 && !placed;a++){
+          const radius=rand(28,50);
+          const x=rand(radius+16,width-radius-16);
+          const y=rand(radius+safeTop,height-radius-safeBottom);
+          if (invalidSpawnZone(x,y,radius)) continue;
+          let ok=true;
+          for (const other of islands){ if (dist(x,y,other.x,other.y) < radius + other.baseRadius + 28){ ok=false; break; } }
+          if (!ok) continue;
+          const bag=['standard','standard','factory','fortress','fuel','heavy'];
+          const type=(i<2||i>count-3)?'standard':bag[Math.floor(Math.random()*bag.length)];
+          islands.push(new Island(x,y,radius,TEAM_NEUTRAL,type));
+          placed=true;
+        }
+      }
+      if (islands.length < 4) return;
+    }
+    let best=[0,1,0]; for (let i=0;i<islands.length;i++){ for (let j=i+1;j<islands.length;j++){ const d=dist(islands[i].x,islands[i].y,islands[j].x,islands[j].y); if (d>best[2]) best=[i,j,d]; }}
+    const player=islands[best[0]], enemy=islands[best[1]];
+    player.owner=TEAM_PLAYER; enemy.owner=TEAM_ENEMY; player.baseRadius=Math.max(player.baseRadius,56); enemy.baseRadius=Math.max(enemy.baseRadius,56); player.initShape(); enemy.initShape(); applyIslandType(player,'standard'); applyIslandType(enemy,'standard'); player.maxPlanes=112; enemy.maxPlanes=112; player.planes=46; enemy.planes=46; player.productionRate=player.baseRadius/30; enemy.productionRate=enemy.baseRadius/30;
+    let farEnemy=null, farPlayer=null, enemyScore=-Infinity, playerScore=-Infinity;
+    for (const island of islands){ if (island===player || island===enemy) continue; const es=dist(island.x,island.y,player.x,player.y)-dist(island.x,island.y,enemy.x,enemy.y)*0.25; const ps=dist(island.x,island.y,enemy.x,enemy.y)-dist(island.x,island.y,player.x,player.y)*0.25; if (es>enemyScore){enemyScore=es; farEnemy=island;} if (ps>playerScore){playerScore=ps; farPlayer=island;} }
+    if (farEnemy && farEnemy.owner===TEAM_NEUTRAL){ farEnemy.owner=TEAM_ENEMY; farEnemy.planes=Math.max(14,Math.round(farEnemy.baseRadius*0.34)); }
+    if (farPlayer && farPlayer.owner===TEAM_NEUTRAL){ farPlayer.owner=TEAM_PLAYER; farPlayer.planes=Math.max(14,Math.round(farPlayer.baseRadius*0.34)); }
+  }
+
+  function teamIslands(team){ return islands.filter(i=>i.owner===team); }
+  function teamPlaneCount(team){ let total=0; for (const i of islands) if (i.owner===team) total+=i.planes; for (const s of squadrons) if (s.owner===team) total+=s.count; return Math.round(total); }
+  function teamCenter(team){ const arr=teamIslands(team); if (!arr.length) return {x:width*0.5,y:height*0.5}; let x=0,y=0; for (const i of arr){x+=i.x;y+=i.y;} return {x:x/arr.length,y:y/arr.length}; }
+  function interestingTarget(source){ const targets=islands.filter(i=>i!==source&&(i.owner!==source.owner||i.type!=='standard')); if (!targets.length) return source; targets.sort((a,b)=>{ const sa=dist(source.x,source.y,a.x,a.y)-ISLAND_TYPES[a.type].value*24-(a.owner===TEAM_ENEMY?16:0); const sb=dist(source.x,source.y,b.x,b.y)-ISLAND_TYPES[b.type].value*24-(b.owner===TEAM_ENEMY?16:0); return sa-sb; }); return targets[0]; }
+
+  function aiUpdate(dt){
+    if (state.mode !== 'running') return; state.aiClock += dt; state.difficulty = clamp(1 + state.time / 110, 1, 1.72); const interval = clamp(0.72 - (state.difficulty - 1) * 0.22, 0.34, 0.72); if (state.aiClock < interval) return; state.aiClock = 0;
+    const enemy=teamIslands(TEAM_ENEMY), player=teamIslands(TEAM_PLAYER); if (!enemy.length || !player.length) return; const pCenter=teamCenter(TEAM_PLAYER); let best=null;
+    for (const source of enemy){ if (source.planes < 8) continue; const sendFraction=source.planes > source.maxPlanes*0.75 ? 0.58 : source.planes > 22 ? 0.48 : 0.36; const sendCount=Math.floor(source.planes*sendFraction); if (sendCount<4) continue;
+      for (const target of islands){ if (target===source) continue; const d=dist(source.x,source.y,target.x,target.y); const incoming=incomingThreat(target,TEAM_PLAYER); const friendly=target.owner===TEAM_ENEMY, playerOwned=target.owner===TEAM_PLAYER, neutral=target.owner===TEAM_NEUTRAL; let score=-9999, blitz=false;
+        if (friendly){ const threat=incoming-incomingThreat(target,TEAM_ENEMY); if (threat>0 || target.planes < target.maxPlanes*0.25) score = 18 + threat*0.8 + (target.maxPlanes-target.planes)*0.34 - d*0.036 + (target.type==='fortress'?12:0); }
+        else { const bias=ISLAND_TYPES[source.type].heavyBias; const projected=sendCount*(1+bias*0.55)/(target.defense||1); const margin=projected-target.planes; const typeValue=ISLAND_TYPES[target.type].value*18; const forward=Math.max(0,1-dist(target.x,target.y,pCenter.x,pCenter.y)/Math.max(width,height)); score = margin*1.8 + typeValue + (playerOwned?18:7) + forward*18 - d*0.04; if (target.type==='factory') score += 12; if (target.type==='fuel') score += 7; if (target.type==='heavy') score += 12; if (neutral && target.planes > sendCount*0.95) score -= 28; if (playerOwned && incoming > 0) score += incoming*0.18; if (margin > target.baseRadius*0.2 && source.planes > 26){ score += 10; blitz = playerOwned && margin > 10; } }
+        if (!best || score > best.score) best = {source,target,score,sendFraction,blitz};
+      }
+    }
+    if (best && best.score > 6) launchWave(best.source,best.target,clamp(best.sendFraction*state.difficulty*0.95,0.28,best.blitz?0.82:0.62),{isBlitz:best.blitz});
+  }
+
+  function updateHUD(){
+    const p=teamIslands(TEAM_PLAYER), e=teamIslands(TEAM_ENEMY);
+    playerStats.textContent=`${p.length} islands • ${teamPlaneCount(TEAM_PLAYER)} planes`;
+    enemyStats.textContent=`${e.length} islands • ${teamPlaneCount(TEAM_ENEMY)} planes`;
+    const ratio=teamPlaneCount(TEAM_ENEMY)/Math.max(1,teamPlaneCount(TEAM_PLAYER));
+    pressureStat.textContent = ratio < 0.75 ? 'Low' : ratio < 1.15 ? 'Balanced' : ratio < 1.5 ? 'High' : 'Severe';
+    aiStat.textContent = state.difficulty < 1.15 ? 'Adaptive' : state.difficulty < 1.45 ? 'Aggressive' : 'War Mode';
+    if (state.time > state.messageUntil){
+      if (state.drag.active) messageBar.textContent = 'Release over an island to launch 50%.';
+      else if (state.armedPower) messageBar.textContent = `Power armed: ${state.armedPower.toUpperCase()}. Tap a valid island.`;
+      else if (state.selectedIsland) messageBar.textContent = 'Selected. Tap more targets for chained attacks, drag to aim, or double-tap for blitz.';
+      else messageBar.textContent = 'Capture factories early, fortresses to hold fronts, fuel islands for speed, heavy bases for giant aircraft, and use powers for momentum.';
+    }
+    updateAbilityHud();
+  }
+
+  function finishGame(winner){ if (state.mode !== 'running') return; state.mode='gameover'; state.winner=winner; state.selectedIsland=null; clearArmedPower(); gameOverOverlay.classList.remove('hidden'); if (winner===TEAM_PLAYER){ gameOverTitle.textContent='Victory'; gameOverText.textContent='You own the Pacific skies.'; playCapture(TEAM_PLAYER,0); playTone({freq:880,type:'triangle',duration:0.22,volume:0.08,slide:1.03,at:0.18}); } else { gameOverTitle.textContent='Defeat'; gameOverText.textContent='Your air command collapsed. Launch another battle.'; playTone({freq:260,type:'sawtooth',duration:0.28,volume:0.08,slide:0.6,at:0}); playTone({freq:180,type:'triangle',duration:0.36,volume:0.07,slide:0.72,at:0.1}); } updateAbilityHud(); }
+  function checkGameOver(){ if (state.mode !== 'running') return; const pI=teamIslands(TEAM_PLAYER).length>0, eI=teamIslands(TEAM_ENEMY).length>0, pF=squadrons.some(s=>s.owner===TEAM_PLAYER), eF=squadrons.some(s=>s.owner===TEAM_ENEMY); if (!pI && !pF) finishGame(TEAM_ENEMY); else if (!eI && !eF) finishGame(TEAM_PLAYER); }
+
+  function update(dt){
+    state.time += dt; state.waterPhase += dt; playMusic(dt); addEnergy(dt * 2.2);
+    if (state.combo > 0 && state.time > state.comboUntil) state.combo = 0;
+    islands.forEach(i=>i.update(dt)); aiUpdate(dt);
+    for (let i=squadrons.length-1;i>=0;i--) if (squadrons[i].update(dt)) squadrons.splice(i,1);
+    for (let i=bombs.length-1;i>=0;i--) if (bombs[i].update(dt)) bombs.splice(i,1);
+    for (let i=particles.length-1;i>=0;i--) if (particles[i].update(dt)) particles.splice(i,1);
+    for (let i=ripples.length-1;i>=0;i--) if (ripples[i].update(dt)) ripples.splice(i,1);
+    for (let i=decals.length-1;i>=0;i--) if (decals[i].update(dt)) decals.splice(i,1);
+    for (let i=floatingTexts.length-1;i>=0;i--) if (floatingTexts[i].update(dt)) floatingTexts.splice(i,1);
+    updateHUD(); checkGameOver();
+  }
+
+  function drawBackground(){
+    const bg=buildBackground(); if (bg) ctx.drawImage(bg,0,0,width,height); else { ctx.fillStyle='#08243d'; ctx.fillRect(0,0,width,height); }
+    const waterGrad=ctx.createLinearGradient(0,0,0,height); waterGrad.addColorStop(0,'rgba(42,170,228,0.14)'); waterGrad.addColorStop(0.45,'rgba(18,108,170,0.08)'); waterGrad.addColorStop(1,'rgba(0,0,0,0.09)'); ctx.fillStyle=waterGrad; ctx.fillRect(0,0,width,height);
+    stars.forEach(st=>{ ctx.fillStyle=`rgba(255,255,255,${st.a + Math.sin(state.time*1.5+st.phase)*0.03})`; ctx.beginPath(); ctx.arc(st.x,st.y,st.s,0,Math.PI*2); ctx.fill(); });
+    ctx.strokeStyle='rgba(255,255,255,0.028)'; ctx.lineWidth=1;
+    for (let band=0; band<18; band++){ const baseY=(band/18)*height; ctx.beginPath(); for (let x=-24; x<=width+24; x+=18){ const y=baseY + Math.sin(x*0.014 + state.waterPhase*1.3 + band*0.6)*7 + Math.cos(x*0.007 - state.waterPhase*0.9 + band*0.4)*5; if (x<=0) ctx.moveTo(x,y); else ctx.lineTo(x,y); } ctx.stroke(); }
+    ctx.strokeStyle='rgba(145,227,255,0.06)'; ctx.lineWidth=1.5;
+    for (let ribbon=0; ribbon<10; ribbon++){ const baseY=(ribbon/10)*height + 14; ctx.beginPath(); for (let x=-20; x<=width+20; x+=16){ const y=baseY + Math.sin(x*0.018 + state.waterPhase*2.1 + ribbon)*(6+ribbon*0.25); if (x<=0) ctx.moveTo(x,y); else ctx.lineTo(x,y); } ctx.stroke(); }
+    for (const f of foamStrips){ const y=(f.y + Math.sin(state.waterPhase*0.5 + f.phase)*10 + height) % height; const xOffset=(state.waterPhase*f.spd + f.phase*30) % (width + f.len) - f.len; ctx.strokeStyle='rgba(230,249,255,0.07)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(xOffset,y); for (let x=0; x<=f.len; x+=14){ ctx.lineTo(xOffset+x, y + Math.sin(x*0.09 + state.waterPhase*3 + f.phase) * f.amp); } ctx.stroke(); }
+    for (const c of clouds){ const x=(c.x + state.time*c.drift) % (width + c.r*2) - c.r; const y=c.y + Math.sin(state.time*0.18 + c.phase)*8; const g=ctx.createRadialGradient(x,y,c.r*0.18,x,y,c.r); g.addColorStop(0,`rgba(255,255,255,${c.a})`); g.addColorStop(1,'rgba(255,255,255,0)'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,c.r,0,Math.PI*2); ctx.fill(); }
+  }
+
+  function drawGuides(){
+    if (state.selectedIsland && !state.drag.active && state.mode === 'running'){
+      ctx.save(); ctx.strokeStyle='rgba(89,239,255,0.22)'; ctx.lineWidth=2; ctx.setLineDash([8,8]);
+      for (const island of islands){ if (island===state.selectedIsland) continue; ctx.beginPath(); ctx.moveTo(state.selectedIsland.x,state.selectedIsland.y); ctx.lineTo(island.x,island.y); ctx.stroke(); }
+      ctx.setLineDash([]); ctx.restore();
+    }
+    if (state.drag.active && state.drag.source && state.mode === 'running'){
+      const source=state.drag.source, target=state.drag.target;
+      ctx.save(); ctx.lineWidth=3; const grad=ctx.createLinearGradient(source.x,source.y,state.drag.x,state.drag.y); grad.addColorStop(0,'rgba(89,239,255,0.72)'); grad.addColorStop(1,'rgba(89,239,255,0.12)'); ctx.strokeStyle=grad; ctx.beginPath(); ctx.moveTo(source.x,source.y); ctx.lineTo(state.drag.x,state.drag.y); ctx.stroke();
+      const ang=Math.atan2(state.drag.y-source.y,state.drag.x-source.x); ctx.fillStyle='rgba(89,239,255,0.82)'; ctx.beginPath(); ctx.moveTo(state.drag.x,state.drag.y); ctx.lineTo(state.drag.x-Math.cos(ang-0.35)*18,state.drag.y-Math.sin(ang-0.35)*18); ctx.lineTo(state.drag.x-Math.cos(ang+0.35)*18,state.drag.y-Math.sin(ang+0.35)*18); ctx.closePath(); ctx.fill();
+      if (target){ ctx.strokeStyle='rgba(255,255,255,0.55)'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(target.x,target.y,target.baseRadius+10+Math.sin(state.time*12)*2,0,Math.PI*2); ctx.stroke(); }
+      ctx.restore();
+    }
+  }
+
+  function render(){ drawBackground(); drawGuides(); islands.forEach(i=>i.draw(ctx)); decals.forEach(d=>d.draw(ctx)); ripples.forEach(r=>r.draw(ctx)); bombs.forEach(b=>b.draw(ctx)); squadrons.forEach(s=>s.draw(ctx)); particles.forEach(p=>p.draw(ctx)); floatingTexts.forEach(f=>f.draw(ctx)); }
+
+  function islandAt(x,y){ for (const island of islands){ if (dist(x,y,island.x,island.y)<=island.baseRadius*1.02) return island; } return null; }
+
+  function beginDrag(x,y,pointerId=null){
+    if (state.mode !== 'running') return;
+    ensureAudio();
+    const island = islandAt(x,y);
+    if (state.armedPower){
+      castPowerOnIsland(state.armedPower, island);
+      return;
+    }
+    state.drag.active = true;
+    state.drag.moved = false;
+    state.drag.source = island && island.owner === TEAM_PLAYER ? island : null;
+    state.drag.target = null;
+    state.drag.x=x; state.drag.y=y; state.drag.startX=x; state.drag.startY=y; state.drag.startTime=performance.now(); state.drag.pointerId=pointerId;
+    if (state.drag.source){ state.selectedIsland = state.drag.source; state.drag.source.capturePulse = 0.52; const pan=clamp((state.drag.source.x/Math.max(1,width))*2-1,-1,1); playTone({freq:520,type:'triangle',duration:0.08,volume:0.034,slide:1.08,pan}); }
+  }
+
+  function updateDrag(x,y){
+    if (!state.drag.active) return;
+    state.drag.x=x; state.drag.y=y;
+    if (dist(state.drag.startX,state.drag.startY,x,y) > 12) state.drag.moved = true;
+    if (state.drag.source && state.drag.moved){ const hovered=islandAt(x,y); state.drag.target = hovered && hovered !== state.drag.source ? hovered : null; }
+  }
+
+  function handleTap(x,y){
+    const island = islandAt(x,y);
+    if (state.armedPower){
+      castPowerOnIsland(state.armedPower, island);
+      return;
+    }
+    if (!state.selectedIsland){
+      if (island && island.owner === TEAM_PLAYER){
+        state.selectedIsland = island;
+        island.capturePulse = 0.5;
+        const now = performance.now();
+        if (state.lastTapIsland === island && now - state.lastTapAt < 320){
+          const autoTarget = interestingTarget(island);
+          const ok = launchWave(island, autoTarget, 0.82, { isBlitz:true });
+          if (ok) setMessage('Blitz wave launched.', 1.4);
+          state.lastTapIsland = null;
+          state.lastTapAt = 0;
+          state.selectedIsland = island;
+        } else {
+          state.lastTapIsland = island;
+          state.lastTapAt = now;
+          setMessage('Selected. Tap more islands to chain attacks, or drag from here.', 1.2);
+        }
+      }
+      return;
+    }
+
+    const selected = state.selectedIsland;
+    const now = performance.now();
+    if (island === selected){
+      if (state.lastTapIsland === selected && now - state.lastTapAt < 320){
+        const autoTarget = interestingTarget(selected);
+        const ok = launchWave(selected, autoTarget, 0.82, { isBlitz:true });
+        if (ok) setMessage('Blitz wave launched.', 1.4);
+      } else {
+        setMessage('Selection cleared.', 0.9);
+        state.selectedIsland = null;
+      }
+      state.lastTapIsland = selected;
+      state.lastTapAt = now;
+      return;
+    }
+
+    if (island){
+      const ok = launchWave(selected, island, 0.5, { isBlitz:false });
+      if (ok) setMessage(island.owner === TEAM_PLAYER ? 'Reinforcements launched.' : 'Strike wave airborne.', 1.1);
+      state.lastTapIsland = selected;
+      state.lastTapAt = now;
+      if (selected.planes < 2) state.selectedIsland = null;
+    } else {
+      state.selectedIsland = null;
+    }
+  }
+
+  function endDrag(x,y){
+    if (!state.drag.active) return;
+    updateDrag(x,y);
+    const source=state.drag.source, target=state.drag.target;
+    const moved=dist(state.drag.startX,state.drag.startY,x,y);
+    const elapsed=performance.now()-state.drag.startTime;
+    if (source && state.drag.moved && target){
+      const ok = launchWave(source,target,0.5,{isBlitz:false});
+      if (ok) setMessage(target.owner===TEAM_PLAYER?'Reinforcements launched.':'Strike wave airborne.',1.1);
+      state.selectedIsland = source.planes >= 2 ? source : null;
+    } else if (elapsed < 260 && moved < 14){
+      handleTap(x,y);
+    }
+    state.drag.active=false; state.drag.moved=false; state.drag.source=null; state.drag.target=null;
+  }
+
+  function pointerPos(ev){ const rect=canvas.getBoundingClientRect(); if (ev.touches&&ev.touches[0]) return {x:ev.touches[0].clientX-rect.left,y:ev.touches[0].clientY-rect.top}; if (ev.changedTouches&&ev.changedTouches[0]) return {x:ev.changedTouches[0].clientX-rect.left,y:ev.changedTouches[0].clientY-rect.top}; return {x:ev.clientX-rect.left,y:ev.clientY-rect.top}; }
+  function togglePanel(force){ if (typeof force === 'boolean') isPanelCollapsed = force; else isPanelCollapsed = !isPanelCollapsed; sideWrap.classList.toggle('collapsed', isPanelCollapsed); panelHandle.textContent = isPanelCollapsed ? '❯' : '❮'; }
+
+  canvas.addEventListener('pointerdown', ev => { const p=pointerPos(ev); beginDrag(p.x,p.y,ev.pointerId); canvas.setPointerCapture?.(ev.pointerId); });
+  canvas.addEventListener('pointermove', ev => { const p=pointerPos(ev); updateDrag(p.x,p.y); });
+  canvas.addEventListener('pointerup', ev => { const p=pointerPos(ev); endDrag(p.x,p.y); canvas.releasePointerCapture?.(ev.pointerId); });
+  canvas.addEventListener('pointercancel', ev => { const p=pointerPos(ev); endDrag(p.x,p.y); canvas.releasePointerCapture?.(ev.pointerId); });
+  startBtn.addEventListener('click', begin);
+  againBtn.addEventListener('click', begin);
+  restartBtn.addEventListener('click', begin);
+  helpBtn.addEventListener('click', () => togglePanel(false));
+  panelHandle.addEventListener('click', () => togglePanel());
+  boostBtn.addEventListener('click', () => armPower('overdrive'));
+  shieldBtn.addEventListener('click', () => armPower('shield'));
+  stormBtn.addEventListener('click', () => armPower('storm'));
+  window.addEventListener('resize', resize, { passive:true });
+  document.addEventListener('visibilitychange', () => { lastTime = 0; });
+
+  function newGame(){
+    buildMap(); state.mode='running'; state.time=0; state.waterPhase=0; state.selectedIsland=null;
+    state.drag.active=false; state.drag.source=null; state.drag.target=null; state.lastTapAt=0; state.lastTapIsland=null;
+    state.difficulty=1; state.aiClock=0; state.musicClock=0; state.energy=30; state.armedPower=null; state.combo=0; state.comboUntil=0; floatingTexts=[];
+    gameOverOverlay.classList.add('hidden'); startOverlay.classList.add('hidden'); sideWrap.classList.remove('hidden'); floatingButtons.classList.remove('hidden'); abilityHud.classList.remove('hidden');
+    togglePanel(true); setMessage('Air command online. Seize the map.',2.4); updateHUD();
+  }
+  function begin(){ ensureAudio(); newGame(); playTone({freq:330,type:'triangle',duration:0.12,volume:0.04,slide:1.08,at:0}); playTone({freq:494,type:'triangle',duration:0.16,volume:0.05,slide:1.06,at:0.07}); playTone({freq:660,type:'triangle',duration:0.18,volume:0.06,slide:1.04,at:0.14}); }
+
+  let lastTime=0;
+  function loop(ts){ if (!lastTime) lastTime=ts; let dt=(ts-lastTime)/1000; lastTime=ts; dt=Math.min(dt,0.05); if (state.mode==='running') update(dt); else state.time += dt; render(); requestAnimationFrame(loop); }
+
+  resize(); buildAssets(); togglePanel(true); requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
