@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Pacific Strike: SVG Armada</title>
+<style>
+:root{
+  --bg:#041828;
+  --panel:rgba(7,18,33,0.74);
+  --line:rgba(255,255,255,0.12);
+  --text:#e9f7ff;
+  --cyan:#63f6ff;
+  --red:#ff6f7a;
+  --gold:#ffd76c;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);touch-action:none;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+canvas{display:block;width:100vw;height:100vh;}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;z-index:20;}
+.panel{width:min(580px,92vw);color:var(--text);background:linear-gradient(180deg,rgba(9,23,42,0.95),rgba(8,17,29,0.93));border:1px solid var(--line);border-radius:24px;box-shadow:0 22px 70px rgba(0,0,0,0.42);padding:22px 20px 18px;backdrop-filter:blur(10px);}
+.panel h1{margin:0 0 8px;font-size:clamp(30px,6vw,46px);line-height:1;letter-spacing:.08em;text-transform:uppercase;}
+.panel p{margin:10px 0;color:rgba(233,247,255,.88);line-height:1.42;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 18px;}
+.tip{border-radius:16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,.08);padding:12px;font-size:14px;line-height:1.35;}
+button{appearance:none;border:none;border-radius:999px;padding:14px 20px;background:linear-gradient(180deg,#7dfbff,#29e4ff);color:#04121a;font:inherit;font-weight:800;letter-spacing:.04em;box-shadow:0 12px 30px rgba(41,228,255,.35);} 
+button:active{transform:translateY(1px) scale(.995);}
+#hud{position:absolute;left:0;right:0;top:0;padding:calc(10px + env(safe-area-inset-top,0px)) 10px 10px;z-index:10;pointer-events:none;}
+.row{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;}
+.card{color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:10px 12px;box-shadow:0 10px 28px rgba(0,0,0,.24);backdrop-filter:blur(8px);} 
+#titleCard{max-width:min(72vw,500px);} 
+#titleCard h2{margin:0;font-size:clamp(18px,3.4vw,25px);letter-spacing:.08em;line-height:1.05;text-transform:uppercase;}
+#titleCard .sub{font-size:13px;color:rgba(233,247,255,.78);margin-top:6px;}
+#statsCard{min-width:164px;text-align:right;}
+.stat{font-size:13px;margin:3px 0;white-space:nowrap;}
+#messageBar{margin-top:10px;display:inline-flex;align-items:center;gap:8px;color:var(--text);background:rgba(7,18,33,.74);border:1px solid var(--line);border-radius:999px;padding:9px 12px;backdrop-filter:blur(8px);box-shadow:0 10px 28px rgba(0,0,0,.2);font-size:13px;max-width:min(94vw,720px);} 
+.pill{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:800;}
+.you{background:rgba(99,246,255,.18);color:var(--cyan);} .ai{background:rgba(255,111,122,.18);color:var(--red);} .neutral{background:rgba(255,255,255,.15);color:#f0f8ff;}
+#legend{position:absolute;left:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:11;pointer-events:none;}
+#restart{position:absolute;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:12;pointer-events:auto;color:var(--text);background:rgba(7,18,33,.8);border:1px solid var(--line);box-shadow:0 10px 28px rgba(0,0,0,.28);} 
+.hidden{display:none!important;}
+@media (max-width:640px){.grid{grid-template-columns:1fr;}#titleCard{max-width:58vw;}#statsCard{min-width:118px;}.stat{font-size:12px;}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud" class="hidden">
+  <div class="row">
+    <div id="titleCard" class="card">
+      <h2>Pacific Strike: SVG Armada</h2>
+      <div class="sub">Tap your blue island, then tap a target. Tap the same selected island again for a heavy blitz wave.</div>
+    </div>
+    <div id="statsCard" class="card">
+      <div class="stat"><span class="pill you">YOU</span> <span id="playerStats">0 islands • 0 planes</span></div>
+      <div class="stat"><span class="pill ai">AI</span> <span id="enemyStats">0 islands • 0 planes</span></div>
+      <div class="stat">Pressure: <span id="pressureStat">Balanced</span></div>
+      <div class="stat">AI: <span id="aiStat">Adaptive</span></div>
+    </div>
+  </div>
+  <div id="messageBar">Tap to begin launching squadrons.</div>
+</div>
+
+<div id="legend" class="card hidden">
+  <div class="stat"><strong>Special islands</strong></div>
+  <div class="stat">⚙ Factory = fast production</div>
+  <div class="stat">⬟ Fortress = harder to capture</div>
+  <div class="stat">➤ Fuel = faster squadrons</div>
+</div>
+
+<button id="restart" class="hidden">New Battle</button>
+
+<div id="startOverlay" class="overlay">
+  <div class="panel">
+    <h1>Pacific Strike</h1>
+    <p>This version uses generated SVG planes, bombs, impact splats, clustered air formations, and procedural sound. It is built to feel bright, splashy, and responsive on a phone.</p>
+    <div class="grid">
+      <div class="tip"><strong>Launch rhythm</strong><br>Tap one of your islands, then tap any other island to send 50% of its planes in clustered squadrons. Tap the selected island again to launch a dramatic blitz.</div>
+      <div class="tip"><strong>How to snowball</strong><br>Factories grow your air force, fortresses lock down fronts, and fuel islands sling squadrons across the map fast. The AI actively reinforces and counter-attacks.</div>
+    </div>
+    <button id="startBtn">Tap To Launch</button>
+  </div>
+</div>
+
+<div id="gameOverOverlay" class="overlay hidden">
+  <div class="panel">
+    <h1 id="gameOverTitle">Victory</h1>
+    <p id="gameOverText">You control the skies.</p>
+    <button id="againBtn">Play Again</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d', { alpha: false });
+
+  const startOverlay = document.getElementById('startOverlay');
+  const gameOverOverlay = document.getElementById('gameOverOverlay');
+  const gameOverTitle = document.getElementById('gameOverTitle');
+  const gameOverText = document.getElementById('gameOverText');
+  const startBtn = document.getElementById('startBtn');
+  const againBtn = document.getElementById('againBtn');
+  const restartBtn = document.getElementById('restart');
+  const hud = document.getElementById('hud');
+  const legend = document.getElementById('legend');
+  const messageBar = document.getElementById('messageBar');
+  const playerStats = document.getElementById('playerStats');
+  const enemyStats = document.getElementById('enemyStats');
+  const pressureStat = document.getElementById('pressureStat');
+  const aiStat = document.getElementById('aiStat');
+
+  const TEAM_NEUTRAL = 0;
+  const TEAM_PLAYER = 1;
+  const TEAM_ENEMY = 2;
+
+  const TEAMS = {
+    [TEAM_NEUTRAL]: { ring: '#dde9ef', glow: 'rgba(255,255,255,0.18)', fill: '#5b8757', trail: 'rgba(255,255,255,0.16)', bomb: '#f2f2f2', text: '#eef7ff' },
+    [TEAM_PLAYER]: { ring: '#63f6ff', glow: 'rgba(99,246,255,0.32)', fill: '#4f9960', trail: 'rgba(99,246,255,0.22)', bomb: '#8bfaff', text: '#dffcff' },
+    [TEAM_ENEMY]: { ring: '#ff6f7a', glow: 'rgba(255,111,122,0.30)', fill: '#65925a', trail: 'rgba(255,111,122,0.24)', bomb: '#ffbac1', text: '#ffe7ea' }
+  };
+
+  const ISLAND_TYPES = {
+    standard: { label: '', prod: 1.0, defense: 1.0, speed: 1.0, value: 1.0 },
+    factory: { label: '⚙', prod: 1.42, defense: 1.0, speed: 1.0, value: 1.4 },
+    fortress: { label: '⬟', prod: 0.95, defense: 1.35, speed: 1.0, value: 1.35 },
+    fuel: { label: '➤', prod: 1.05, defense: 1.0, speed: 1.28, value: 1.22 }
+  };
+
+  let width = 0, height = 0, dpr = 1;
+  let islands = [];
+  let squadrons = [];
+  let bombs = [];
+  let particles = [];
+  let ripples = [];
+  let decals = [];
+  let clouds = [];
+  let stars = [];
+
+  const state = {
+    mode: 'menu',
+    time: 0,
+    selectedIsland: null,
+    difficulty: 1,
+    aiClock: 0,
+    musicClock: 0,
+    message: 'Tap to begin launching squadrons.',
+    messageUntil: 0,
+    shake: 0,
+    winner: null,
+    bgPattern: null
+  };
+
+  const audio = { ctx: null, master: null };
+  const assets = { planes: {}, bombs: {}, splats: {} };
+
+  function rand(min, max) { return min + Math.random() * (max - min); }
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function dist(ax, ay, bx, by) { return Math.hypot(bx - ax, by - ay); }
+  function angleDiff(a, b) {
+    let d = (b - a + Math.PI) % (Math.PI * 2) - Math.PI;
+    if (d < -Math.PI) d += Math.PI * 2;
+    return d;
+  }
+  function setMessage(text, dur = 2.2) {
+    state.message = text;
+    state.messageUntil = state.time + dur;
+    messageBar.textContent = text;
+  }
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    buildClouds();
+    buildStars();
+    state.bgPattern = null;
+  }
+
+  function svgData(svg) {
+    return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  }
+
+  function makePlaneSVG(accent, shade) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="${accent}"/>
+          <stop offset="100%" stop-color="${shade}"/>
+        </linearGradient>
+        <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="3" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <g filter="url(#glow)">
+        <ellipse cx="64" cy="67" rx="15" ry="34" fill="url(#g)"/>
+        <path d="M64 18 L55 40 L64 46 L73 40 Z" fill="#ffffff" fill-opacity="0.88"/>
+        <path d="M64 82 L54 102 L64 110 L74 102 Z" fill="#dde7ef" fill-opacity="0.9"/>
+        <path d="M64 47 L18 63 L18 72 L64 66 Z" fill="url(#g)"/>
+        <path d="M64 47 L110 63 L110 72 L64 66 Z" fill="url(#g)"/>
+        <path d="M64 60 L36 54 L30 60 L64 73 Z" fill="#f5fdff" fill-opacity="0.6"/>
+        <path d="M64 60 L92 54 L98 60 L64 73 Z" fill="#f5fdff" fill-opacity="0.6"/>
+        <circle cx="64" cy="57" r="4" fill="#0d1921" fill-opacity="0.65"/>
+        <rect x="58" y="52" width="12" height="8" rx="4" fill="#0d1921" fill-opacity="0.45"/>
+        <circle cx="64" cy="27" r="6" fill="#ffffff" fill-opacity="0.85"/>
+      </g>
+    </svg>`;
+  }
+
+  function makeBombSVG(accent, dark) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+      <defs><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+      <g filter="url(#glow)">
+        <path d="M33 7 L38 14 L33 19 L27 14 Z" fill="#fff" fill-opacity="0.9"/>
+        <path d="M32 14 C42 14 48 22 48 30 C48 43 40 54 32 58 C24 54 16 43 16 30 C16 22 22 14 32 14 Z" fill="${accent}" stroke="${dark}" stroke-width="2"/>
+        <path d="M24 38 L40 38" stroke="#fff" stroke-opacity="0.5" stroke-width="2"/>
+        <path d="M14 18 L21 10" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+        <path d="M18 18 L26 12" stroke="#fff" stroke-opacity="0.55" stroke-width="2" stroke-linecap="round"/>
+      </g>
+    </svg>`;
+  }
+
+  function makeSplatSVG(accent, hot) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140">
+      <defs><radialGradient id="g" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="${hot}"/><stop offset="100%" stop-color="${accent}"/></radialGradient></defs>
+      <g opacity="0.92">
+        <path d="M70 15 C80 28 97 20 103 32 C109 44 123 45 122 60 C121 76 107 80 110 94 C113 108 102 114 89 112 C76 110 73 122 58 122 C42 122 39 108 28 105 C17 102 10 90 17 77 C24 64 12 57 18 45 C24 33 38 35 46 29 C54 23 58 12 70 15 Z" fill="url(#g)"/>
+        <circle cx="33" cy="28" r="8" fill="${hot}"/>
+        <circle cx="112" cy="37" r="7" fill="${hot}"/>
+        <circle cx="118" cy="84" r="9" fill="${hot}"/>
+        <circle cx="23" cy="91" r="10" fill="${hot}"/>
+      </g>
+    </svg>`;
+  }
+
+  function imgFrom(svg) {
+    const img = new Image();
+    img.src = svgData(svg);
+    return img;
+  }
+
+  function buildAssets() {
+    assets.planes[TEAM_PLAYER] = imgFrom(makePlaneSVG('#e8ffff', '#62f4ff'));
+    assets.planes[TEAM_ENEMY] = imgFrom(makePlaneSVG('#fff1f3', '#ff7180'));
+    assets.planes[TEAM_NEUTRAL] = imgFrom(makePlaneSVG('#ffffff', '#d0dde4'));
+    assets.bombs[TEAM_PLAYER] = imgFrom(makeBombSVG('#8bfaff', '#3fdde8'));
+    assets.bombs[TEAM_ENEMY] = imgFrom(makeBombSVG('#ffb7c1', '#ff6f7a'));
+    assets.bombs[TEAM_NEUTRAL] = imgFrom(makeBombSVG('#ededed', '#d0d0d0'));
+    assets.splats[TEAM_PLAYER] = imgFrom(makeSplatSVG('#39dfff', '#fff0a4'));
+    assets.splats[TEAM_ENEMY] = imgFrom(makeSplatSVG('#ff6375', '#ffd36b'));
+    assets.splats[TEAM_NEUTRAL] = imgFrom(makeSplatSVG('#d6d6d6', '#ffffff'));
+  }
+
+  function ensureAudio() {
+    if (audio.ctx) {
+      if (audio.ctx.state === 'suspended') audio.ctx.resume();
+      return;
+    }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    audio.ctx = new AC();
+    audio.master = audio.ctx.createGain();
+    audio.master.gain.value = 0.16;
+    audio.master.connect(audio.ctx.destination);
+  }
+
+  function playTone({ freq = 440, type = 'sine', duration = 0.12, volume = 0.1, slide = 1, at = 0, pan = 0 }) {
+    if (!audio.ctx || !audio.master) return;
+    const t0 = audio.ctx.currentTime + at;
+    const osc = audio.ctx.createOscillator();
+    const gain = audio.ctx.createGain();
+    let last = gain;
+    if (audio.ctx.createStereoPanner) {
+      const p = audio.ctx.createStereoPanner();
+      p.pan.value = clamp(pan, -1, 1);
+      gain.connect(p);
+      p.connect(audio.master);
+    } else {
+      gain.connect(audio.master);
+    }
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, freq * slide), t0 + duration);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume), t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(last);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.02);
+  }
+
+  function playNoise({ duration = 0.12, volume = 0.04, pan = 0, frequency = 1000 }) {
+    if (!audio.ctx || !audio.master) return;
+    const length = Math.max(1, Math.floor(audio.ctx.sampleRate * duration));
+    const buffer = audio.ctx.createBuffer(1, length, audio.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / length);
+    const src = audio.ctx.createBufferSource();
+    src.buffer = buffer;
+    const filter = audio.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = frequency;
+    filter.Q.value = 0.7;
+    const gain = audio.ctx.createGain();
+    gain.gain.value = volume;
+    if (audio.ctx.createStereoPanner) {
+      const p = audio.ctx.createStereoPanner();
+      p.pan.value = clamp(pan, -1, 1);
+      src.connect(filter); filter.connect(gain); gain.connect(p); p.connect(audio.master);
+    } else {
+      src.connect(filter); filter.connect(gain); gain.connect(audio.master);
+    }
+    src.start();
+  }
+
+  function playLaunch(team, power, pan) {
+    const root = team === TEAM_PLAYER ? 560 : 300;
+    playTone({ freq: root, type: 'triangle', duration: 0.08 + power * 0.02, volume: 0.09, slide: 0.72, pan });
+    playTone({ freq: root * 1.9, type: 'square', duration: 0.06, volume: 0.032, slide: 1.18, at: 0.02, pan });
+  }
+
+  function playDive(team, pan) {
+    const base = team === TEAM_PLAYER ? 980 : 760;
+    playTone({ freq: base, type: 'sawtooth', duration: 0.15, volume: 0.03, slide: 0.42, pan });
+  }
+
+  function playImpact(team, strong, pan) {
+    playTone({ freq: strong ? 160 : 220, type: 'sawtooth', duration: strong ? 0.22 : 0.14, volume: strong ? 0.1 : 0.07, slide: 0.45, pan });
+    playNoise({ duration: strong ? 0.18 : 0.1, volume: strong ? 0.05 : 0.025, frequency: strong ? 1200 : 1600, pan });
+    if (team === TEAM_PLAYER) playTone({ freq: 620, type: 'triangle', duration: 0.05, volume: 0.025, slide: 0.88, at: 0.04, pan });
+  }
+
+  function playCapture(team, pan) {
+    const notes = team === TEAM_PLAYER ? [440, 554, 740] : [330, 262, 196];
+    notes.forEach((n, i) => playTone({ freq: n, type: 'triangle', duration: 0.16, volume: 0.055, slide: 1.02, at: i * 0.07, pan }));
+  }
+
+  function playMusic(dt) {
+    if (!audio.ctx || state.mode !== 'running') return;
+    state.musicClock += dt;
+    if (state.musicClock < 0.5) return;
+    state.musicClock = 0;
+    const p = teamPlanes(TEAM_PLAYER);
+    const e = teamPlanes(TEAM_ENEMY);
+    const danger = clamp((e - p) / 160, -1, 1);
+    const root = danger > 0 ? 196 : 220;
+    playTone({ freq: root, type: 'sine', duration: 0.32, volume: 0.012, slide: 0.98, pan: -0.25 });
+    playTone({ freq: root * (danger > 0 ? 1.5 : 1.25), type: 'triangle', duration: 0.22, volume: 0.01, slide: 1.01, at: 0.08, pan: 0.28 });
+    if (Math.random() < 0.4) playTone({ freq: root * 2.02, type: 'triangle', duration: 0.08, volume: 0.006, slide: 1.03, at: 0.18, pan: 0.05 });
+  }
+
+  class Island {
+    constructor(x, y, radius, owner, type = 'standard') {
+      this.x = x;
+      this.y = y;
+      this.baseRadius = radius;
+      this.owner = owner;
+      this.type = type;
+      this.prodBase = radius / 40;
+      this.productionRate = this.prodBase * ISLAND_TYPES[type].prod;
+      this.defense = ISLAND_TYPES[type].defense;
+      this.speedMul = ISLAND_TYPES[type].speed;
+      this.maxPlanes = Math.round(radius * 1.8 * ISLAND_TYPES[type].value);
+      this.planes = owner === TEAM_NEUTRAL ? Math.round(radius * rand(0.18, 0.34)) : Math.round(radius * 0.55 + 12);
+      this.path = this.makeShape(radius);
+      this.runwayAngle = rand(-Math.PI, Math.PI);
+      this.pulse = rand(0, Math.PI * 2);
+      this.capturePulse = 0;
+      this.warningPulse = 0;
+    }
+    makeShape(radius) {
+      const verts = [];
+      const points = 24;
+      const a0 = rand(0, Math.PI * 2);
+      const a1 = rand(0, Math.PI * 2);
+      for (let i = 0; i < points; i++) {
+        const a = (i / points) * Math.PI * 2;
+        const jitter = 1 + Math.sin(a * 3 + a0) * 0.08 + Math.sin(a * 5 + a1) * 0.06 + rand(-0.07, 0.07);
+        const r = radius * clamp(jitter, 0.78, 1.25);
+        verts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r });
+      }
+      return verts;
+    }
+    update(dt) {
+      this.pulse += dt * 2.2;
+      this.capturePulse = Math.max(0, this.capturePulse - dt * 1.5);
+      this.warningPulse = Math.max(0, this.warningPulse - dt * 0.85);
+      if (this.owner !== TEAM_NEUTRAL && this.planes < this.maxPlanes) {
+        this.planes = Math.min(this.maxPlanes, this.planes + this.productionRate * dt);
+      }
+      const hostile = incomingThreat(this, this.owner === TEAM_PLAYER ? TEAM_ENEMY : TEAM_PLAYER);
+      if (this.owner !== TEAM_NEUTRAL && hostile > this.planes * 0.55) this.warningPulse = Math.min(1, this.warningPulse + dt * 1.8);
+    }
+    draw(ctx) {
+      const team = TEAMS[this.owner];
+      const selected = this === state.selectedIsland;
+      const pulseScale = selected ? 1 + Math.sin(this.pulse * 8) * 0.06 : 1;
+      const radius = this.baseRadius * pulseScale;
+
+      const water = ctx.createRadialGradient(this.x, this.y, radius * 0.4, this.x, this.y, radius + 28);
+      water.addColorStop(0, 'rgba(52,190,255,0.18)');
+      water.addColorStop(1, 'rgba(52,190,255,0)');
+      ctx.fillStyle = water;
+      ctx.beginPath(); ctx.arc(this.x, this.y, radius + 26, 0, Math.PI * 2); ctx.fill();
+
+      if (this.capturePulse > 0 || this.warningPulse > 0) {
+        ctx.save();
+        ctx.globalAlpha = 0.3 + this.capturePulse * 0.35 + this.warningPulse * 0.22;
+        ctx.strokeStyle = this.warningPulse > this.capturePulse ? 'rgba(255,215,92,0.8)' : team.glow;
+        ctx.lineWidth = 2 + this.capturePulse * 4 + this.warningPulse * 2;
+        ctx.beginPath(); ctx.arc(this.x, this.y, radius + 15 + this.capturePulse * 8, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+      }
+
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.shadowColor = team.ring;
+      ctx.shadowBlur = selected ? 30 : 12;
+      ctx.lineJoin = 'round';
+
+      ctx.fillStyle = '#d8c695';
+      ctx.beginPath();
+      this.path.forEach((v, i) => i ? ctx.lineTo(v.x, v.y) : ctx.moveTo(v.x, v.y));
+      ctx.closePath(); ctx.fill();
+
+      ctx.fillStyle = team.fill;
+      ctx.beginPath();
+      this.path.forEach((v, i) => i ? ctx.lineTo(v.x * 0.78, v.y * 0.78) : ctx.moveTo(v.x * 0.78, v.y * 0.78));
+      ctx.closePath(); ctx.fill();
+
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = team.ring;
+      ctx.lineWidth = selected ? 5 : 3;
+      ctx.stroke();
+
+      const rlen = radius * 0.95;
+      ctx.rotate(this.runwayAngle);
+      ctx.strokeStyle = 'rgba(32,44,48,0.9)';
+      ctx.lineWidth = Math.max(3, radius * 0.12);
+      ctx.beginPath(); ctx.moveTo(-rlen * 0.38, 0); ctx.lineTo(rlen * 0.38, 0); ctx.stroke();
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(-rlen * 0.27, 0); ctx.lineTo(rlen * 0.27, 0); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+      ctx.lineWidth = 4;
+      ctx.font = `800 ${Math.round(clamp(radius * 0.42, 16, 30))}px Inter,system-ui,sans-serif`;
+      const txt = String(Math.floor(this.planes));
+      ctx.strokeText(txt, this.x, this.y + 1);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(txt, this.x, this.y + 1);
+      if (this.type !== 'standard') {
+        ctx.font = `700 ${Math.round(clamp(radius * 0.36, 14, 24))}px Inter,system-ui,sans-serif`;
+        ctx.fillStyle = this.type === 'factory' ? '#ffe982' : this.type === 'fortress' ? '#e8f6ff' : '#ffd4a3';
+        ctx.strokeText(ISLAND_TYPES[this.type].label, this.x, this.y - radius * 0.72);
+        ctx.fillText(ISLAND_TYPES[this.type].label, this.x, this.y - radius * 0.72);
+      }
+      ctx.restore();
+    }
+  }
+
+  class Squadron {
+    constructor(source, target, count, owner, opts = {}) {
+      this.source = source;
+      this.target = target;
+      this.owner = owner;
+      this.count = count;
+      this.x = source.x;
+      this.y = source.y;
+      this.angle = Math.atan2(target.y - source.y, target.x - source.x);
+      this.speed = (100 + Math.sqrt(count) * 5 + rand(-8, 12)) * (source.speedMul || 1) * (opts.speedMul || 1);
+      this.turnRate = rand(2.8, 4.2);
+      this.time = 0;
+      this.weave = rand(0, Math.PI * 2);
+      this.trail = [];
+      this.trailMax = 8;
+      this.spawnDelay = opts.spawnDelay || 0;
+      this.isBlitz = !!opts.isBlitz;
+      this.formation = this.makeFormation(count, opts.index || 0);
+      this.bombTimer = rand(0.24, 0.5);
+      this.hasDropped = 0;
+      this.maxDrops = this.isBlitz ? 4 : 2;
+    }
+    makeFormation(count, index) {
+      const n = clamp(Math.round(count / 8), 2, this.isBlitz ? 7 : 5);
+      const arr = [];
+      for (let i = 0; i < n; i++) {
+        const row = Math.floor(i / 2);
+        const side = i % 2 === 0 ? -1 : 1;
+        arr.push({
+          ox: side * (12 + row * 7 + rand(-2, 2)) + index * rand(-1.5, 1.5),
+          oy: 5 + row * 8 + rand(-2, 2),
+          phase: rand(0, Math.PI * 2),
+          scale: rand(0.78, 1.1)
+        });
+      }
+      return arr;
+    }
+    update(dt) {
+      this.time += dt;
+      if (this.spawnDelay > 0) {
+        this.spawnDelay -= dt;
+        return false;
+      }
+      const desired = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+      this.angle += angleDiff(this.angle, desired) * clamp(this.turnRate * dt, 0, 1);
+      const weaveForce = Math.sin(this.time * 6 + this.weave) * 6;
+      this.x += Math.cos(this.angle) * this.speed * dt - Math.sin(this.angle) * weaveForce * 0.015;
+      this.y += Math.sin(this.angle) * this.speed * dt + Math.cos(this.angle) * weaveForce * 0.015;
+      this.trail.push({ x: this.x, y: this.y, a: this.angle });
+      if (this.trail.length > this.trailMax) this.trail.shift();
+      if (Math.random() < 0.85) spawnContrail(this.x, this.y, this.angle, this.owner, this.isBlitz ? 1.5 : 1);
+
+      const d = dist(this.x, this.y, this.target.x, this.target.y);
+      this.bombTimer -= dt;
+      if (d < 160 && this.bombTimer <= 0 && this.hasDropped < this.maxDrops) {
+        this.hasDropped++;
+        this.bombTimer = rand(0.12, 0.25);
+        spawnBombFromSquadron(this);
+      }
+      if (d < this.target.baseRadius * 0.9) {
+        resolveArrival(this, this.target);
+        return true;
+      }
+      return false;
+    }
+    draw(ctx) {
+      if (this.spawnDelay > 0) return;
+      const team = TEAMS[this.owner];
+      ctx.save();
+      ctx.lineCap = 'round';
+      for (let i = 0; i < this.trail.length; i++) {
+        const t = this.trail[i];
+        const a = (i + 1) / this.trail.length;
+        ctx.strokeStyle = this.owner === TEAM_PLAYER ? `rgba(99,246,255,${0.03 + a * 0.12})` : `rgba(255,111,122,${0.03 + a * 0.12})`;
+        ctx.lineWidth = 1 + a * (this.isBlitz ? 3.6 : 2.2);
+        ctx.beginPath();
+        ctx.moveTo(t.x - Math.cos(t.a) * 10, t.y - Math.sin(t.a) * 10);
+        ctx.lineTo(t.x, t.y);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      for (let i = 0; i < this.formation.length; i++) {
+        const f = this.formation[i];
+        const wobbleX = Math.sin(this.time * 6 + f.phase) * 2.5;
+        const wobbleY = Math.cos(this.time * 5 + f.phase) * 2.2;
+        const ox = f.ox + wobbleX;
+        const oy = f.oy + wobbleY;
+        const px = this.x + Math.cos(this.angle) * oy - Math.sin(this.angle) * ox;
+        const py = this.y + Math.sin(this.angle) * oy + Math.cos(this.angle) * ox;
+        drawSprite(ctx, assets.planes[this.owner], px, py, this.angle + Math.sin(this.time * 4 + f.phase) * 0.06, 0.23 * f.scale, team.ring);
+      }
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.font = `800 ${Math.round(this.isBlitz ? 16 : 13)}px Inter,system-ui,sans-serif`;
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(0,0,0,0.72)';
+      const txt = this.count >= 100 ? String(Math.round(this.count)) : String(Math.floor(this.count));
+      ctx.strokeText(txt, this.x, this.y - 18);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(txt, this.x, this.y - 18);
+      ctx.restore();
+    }
+  }
+
+  class Bomb {
+    constructor(x, y, target, owner, scale = 1) {
+      this.x = x;
+      this.y = y;
+      this.target = target;
+      this.owner = owner;
+      this.scale = scale;
+      this.life = rand(0.45, 0.85);
+      this.angle = rand(-1, 1);
+      const aim = Math.atan2(target.y - y, target.x - x);
+      const sp = rand(120, 180) * scale;
+      this.vx = Math.cos(aim) * sp + rand(-18, 18);
+      this.vy = Math.sin(aim) * sp + rand(-12, 12);
+      this.spin = rand(-7, 7);
+      this.size = rand(0.18, 0.28) * scale;
+      this.exploded = false;
+    }
+    update(dt) {
+      this.life -= dt;
+      this.vy += 130 * dt;
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+      this.angle += this.spin * dt;
+      if (Math.random() < 0.5) spawnBombSmoke(this.x, this.y, this.owner);
+      if (this.life <= 0 || dist(this.x, this.y, this.target.x, this.target.y) < this.target.baseRadius * 0.7) {
+        this.explode();
+        return true;
+      }
+      return false;
+    }
+    explode() {
+      if (this.exploded) return;
+      this.exploded = true;
+      const pan = clamp((this.x / Math.max(1, width)) * 2 - 1, -1, 1);
+      spawnExplosion(this.x, this.y, this.owner, 0.8 * this.scale, true);
+      playImpact(this.owner, false, pan);
+    }
+    draw(ctx) {
+      drawSprite(ctx, assets.bombs[this.owner], this.x, this.y, this.angle, this.size, 'rgba(255,255,255,0.35)');
+    }
+  }
+
+  class Particle {
+    constructor(x, y, vx, vy, life, color, size, glow = 0, decay = 1) {
+      this.x = x; this.y = y; this.vx = vx; this.vy = vy; this.life = life; this.maxLife = life; this.color = color; this.size = size; this.glow = glow; this.decay = decay;
+    }
+    update(dt) {
+      this.life -= dt * this.decay;
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+      this.vx *= 0.986;
+      this.vy *= 0.986;
+      this.vy += 8 * dt;
+      return this.life <= 0;
+    }
+    draw(ctx) {
+      const a = clamp(this.life / this.maxLife, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = a;
+      if (this.glow > 0) { ctx.shadowColor = this.color; ctx.shadowBlur = this.glow; }
+      ctx.fillStyle = this.color;
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.size * (0.45 + a * 0.55), 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  class Ripple {
+    constructor(x, y, r, color) { this.x = x; this.y = y; this.r = r; this.life = 0.7; this.maxLife = 0.7; this.color = color; }
+    update(dt) { this.life -= dt; this.r += dt * 56; return this.life <= 0; }
+    draw(ctx) {
+      const a = clamp(this.life / this.maxLife, 0, 1);
+      ctx.save(); ctx.globalAlpha = a * 0.65; ctx.strokeStyle = this.color; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    }
+  }
+
+  class Decal {
+    constructor(x, y, owner, scale = 1) { this.x = x; this.y = y; this.owner = owner; this.scale = scale; this.rot = rand(-Math.PI, Math.PI); this.life = 0.6; this.maxLife = 0.6; }
+    update(dt) { this.life -= dt; return this.life <= 0; }
+    draw(ctx) {
+      ctx.save(); ctx.globalAlpha = clamp(this.life / this.maxLife, 0, 1) * 0.9;
+      drawSprite(ctx, assets.splats[this.owner], this.x, this.y, this.rot, 0.26 * this.scale, null);
+      ctx.restore();
+    }
+  }
+
+  function drawSprite(ctx, img, x, y, angle, scale, glow) {
+    const w = img.width || 128;
+    const h = img.height || 128;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = 12; }
+    ctx.drawImage(img, -w * scale * 0.5, -h * scale * 0.5, w * scale, h * scale);
+    ctx.restore();
+  }
+
+  function buildClouds() {
+    clouds = [];
+    const count = Math.max(6, Math.round((width * height) / 95000));
+    for (let i = 0; i < count; i++) clouds.push({ x: rand(0, width), y: rand(0, height), r: rand(26, 74), a: rand(0.014, 0.05), drift: rand(2, 11), phase: rand(0, Math.PI * 2) });
+  }
+
+  function buildStars() {
+    stars = [];
+    const count = Math.max(24, Math.round((width * height) / 18000));
+    for (let i = 0; i < count; i++) stars.push({ x: rand(0, width), y: rand(0, height), s: rand(0.6, 2.2), a: rand(0.05, 0.15), phase: rand(0, Math.PI * 2) });
+  }
+
+  function buildPattern() {
+    if (state.bgPattern) return state.bgPattern;
+    const off = document.createElement('canvas');
+    off.width = 260; off.height = 260;
+    const o = off.getContext('2d');
+    const grad = o.createLinearGradient(0,0,0,260);
+    grad.addColorStop(0,'#0c4168'); grad.addColorStop(.5,'#0a3051'); grad.addColorStop(1,'#08243d');
+    o.fillStyle = grad; o.fillRect(0,0,260,260);
+    for (let i = 0; i < 160; i++) {
+      o.strokeStyle = `rgba(255,255,255,${Math.random() * 0.05})`;
+      o.lineWidth = Math.random() * 1.4 + 0.2;
+      o.beginPath();
+      const x = Math.random() * 260, y = Math.random() * 260, len = 10 + Math.random() * 38;
+      o.moveTo(x,y); o.quadraticCurveTo(x + len * .4, y + Math.random() * 8 - 4, x + len, y + Math.random() * 6 - 3); o.stroke();
+    }
+    state.bgPattern = ctx.createPattern(off, 'repeat');
+    return state.bgPattern;
+  }
+
+  function spawnContrail(x, y, angle, owner, mult = 1) {
+    particles.push(new Particle(
+      x - Math.cos(angle) * rand(4, 10),
+      y - Math.sin(angle) * rand(4, 10),
+      -Math.cos(angle) * rand(6, 20) * mult + rand(-5, 5),
+      -Math.sin(angle) * rand(6, 20) * mult + rand(-5, 5),
+      rand(0.16, 0.34), owner === TEAM_PLAYER ? 'rgba(180,252,255,0.95)' : owner === TEAM_ENEMY ? 'rgba(255,191,198,0.95)' : 'rgba(255,255,255,0.9)',
+      rand(1.1, 2.2), mult > 1 ? 7 : 3, 1.3
+    ));
+  }
+
+  function spawnBombSmoke(x, y, owner) {
+    particles.push(new Particle(x + rand(-3,3), y + rand(-3,3), rand(-8,8), rand(-12,2), rand(0.2,0.35), owner === TEAM_PLAYER ? 'rgba(175,251,255,0.5)' : 'rgba(255,185,193,0.45)', rand(1.4,2.8), 0, 1.2));
+  }
+
+  function spawnExplosion(x, y, owner, power = 1, small = false) {
+    const core = owner === TEAM_PLAYER ? '#96f7ff' : owner === TEAM_ENEMY ? '#ff9ca5' : '#ffffff';
+    const hot = '#ffd55f';
+    const count = Math.round((small ? 8 : 14) * power);
+    for (let i = 0; i < count; i++) {
+      const a = rand(0, Math.PI * 2);
+      const sp = rand(24, small ? 70 : 120) * power;
+      particles.push(new Particle(x, y, Math.cos(a) * sp, Math.sin(a) * sp, rand(0.24, 0.7), i % 3 === 0 ? hot : core, rand(1.8, 3.8) * power, 10, 1));
+    }
+    decals.push(new Decal(x + rand(-8,8), y + rand(-8,8), owner, power));
+    ripples.push(new Ripple(x, y, 8 + power * 5, owner === TEAM_PLAYER ? 'rgba(99,246,255,0.7)' : owner === TEAM_ENEMY ? 'rgba(255,111,122,0.7)' : 'rgba(255,255,255,0.7)'));
+    state.shake = Math.min(18, state.shake + 2.3 * power);
+  }
+
+  function incomingThreat(island, hostileTeam) {
+    let hostile = 0, friendly = 0;
+    for (const sq of squadrons) {
+      if (sq.target !== island) continue;
+      if (sq.owner === hostileTeam) hostile += sq.count; else if (sq.owner === island.owner) friendly += sq.count;
+    }
+    return Math.max(0, hostile - friendly);
+  }
+
+  function spawnBombFromSquadron(squadron) {
+    bombs.push(new Bomb(squadron.x, squadron.y, squadron.target, squadron.owner, squadron.isBlitz ? 1.25 : 1));
+    const pan = clamp((squadron.x / Math.max(1, width)) * 2 - 1, -1, 1);
+    playDive(squadron.owner, pan);
+  }
+
+  function splitCount(total, groups) {
+    const out = [];
+    let remain = total;
+    for (let i = 0; i < groups; i++) {
+      const left = groups - i;
+      const n = i === groups - 1 ? remain : Math.max(1, Math.round(remain / left + rand(-2, 2)));
+      out.push(n);
+      remain -= n;
+    }
+    if (remain !== 0) out[out.length - 1] += remain;
+    return out;
+  }
+
+  function launchWave(source, target, fraction = 0.5, opts = {}) {
+    if (!source || !target || source === target || source.owner === TEAM_NEUTRAL) return false;
+    const total = Math.max(1, Math.floor(source.planes * fraction));
+    if (total <= 0) return false;
+    source.planes -= total;
+    source.capturePulse = 0.45;
+    const groups = clamp(Math.round(total / (opts.isBlitz ? 11 : 14)), 2, opts.isBlitz ? 8 : 6);
+    const parts = splitCount(total, groups);
+    parts.forEach((count, i) => {
+      squadrons.push(new Squadron(source, target, count, source.owner, {
+        isBlitz: !!opts.isBlitz,
+        spawnDelay: i * (opts.isBlitz ? 0.055 : 0.08),
+        speedMul: opts.isBlitz ? 1.16 : 1,
+        index: i
+      }));
+    });
+    const pan = clamp((source.x / Math.max(1, width)) * 2 - 1, -1, 1);
+    playLaunch(source.owner, Math.min(2.4, total / 22), pan);
+    for (let i = 0; i < (opts.isBlitz ? 18 : 10); i++) spawnContrail(source.x, source.y, Math.atan2(target.y - source.y, target.x - source.x), source.owner, opts.isBlitz ? 1.5 : 1);
+    return true;
+  }
+
+  function resolveArrival(squadron, island) {
+    const pan = clamp((island.x / Math.max(1, width)) * 2 - 1, -1, 1);
+    const power = clamp(squadron.count / 24, 0.6, squadron.isBlitz ? 2.1 : 1.45);
+    spawnExplosion(squadron.x, squadron.y, squadron.owner, power, false);
+    if (squadron.owner === island.owner) {
+      island.planes = Math.min(island.maxPlanes, island.planes + squadron.count);
+      island.capturePulse = 0.42;
+      playImpact(squadron.owner, false, pan);
+      return;
+    }
+    const effective = squadron.count / (island.defense || 1);
+    island.planes -= effective;
+    island.capturePulse = 0.85;
+    playImpact(squadron.owner, effective > island.baseRadius * 0.4, pan);
+    if (island.planes < 0) {
+      island.owner = squadron.owner;
+      island.planes = Math.max(1, Math.abs(island.planes));
+      island.warningPulse = 0;
+      island.capturePulse = 1;
+      playCapture(squadron.owner, pan);
+      setMessage(squadron.owner === TEAM_PLAYER ? 'Island captured. Airspace expanding.' : 'Enemy capture detected. Strike back.', 2.4);
+    }
+  }
+
+  function buildMap() {
+    islands = [];
+    squadrons = [];
+    bombs = [];
+    particles = [];
+    ripples = [];
+    decals = [];
+
+    const safeTop = 84;
+    const safeBottom = 52;
+    const count = clamp(Math.floor((width * height) / 42000), 9, 17);
+    for (let i = 0; i < count; i++) {
+      let placed = false;
+      for (let a = 0; a < 180 && !placed; a++) {
+        const radius = rand(28, 54);
+        const x = rand(radius + 16, width - radius - 16);
+        const y = rand(radius + safeTop, height - radius - safeBottom);
+        let ok = true;
+        for (const other of islands) {
+          if (dist(x, y, other.x, other.y) < radius + other.baseRadius + 42) { ok = false; break; }
+        }
+        if (!ok) continue;
+        const types = ['standard','standard','standard','factory','fortress','fuel'];
+        const type = (i < 2 || i > count - 3) ? 'standard' : types[Math.floor(Math.random() * types.length)];
+        islands.push(new Island(x, y, radius, TEAM_NEUTRAL, type));
+        placed = true;
+      }
+    }
+    if (islands.length < 6) { buildMap(); return; }
+    let best = [0, 1, 0];
+    for (let i = 0; i < islands.length; i++) {
+      for (let j = i + 1; j < islands.length; j++) {
+        const d = dist(islands[i].x, islands[i].y, islands[j].x, islands[j].y);
+        if (d > best[2]) best = [i, j, d];
+      }
+    }
+    const player = islands[best[0]];
+    const enemy = islands[best[1]];
+    player.owner = TEAM_PLAYER; enemy.owner = TEAM_ENEMY;
+    player.baseRadius = Math.max(player.baseRadius, 56); enemy.baseRadius = Math.max(enemy.baseRadius, 56);
+    player.type = 'standard'; enemy.type = 'standard';
+    player.defense = 1; enemy.defense = 1;
+    player.speedMul = 1; enemy.speedMul = 1;
+    player.productionRate = player.baseRadius / 30; enemy.productionRate = enemy.baseRadius / 30;
+    player.maxPlanes = 110; enemy.maxPlanes = 110;
+    player.planes = 44; enemy.planes = 44;
+    player.path = player.makeShape(player.baseRadius); enemy.path = enemy.makeShape(enemy.baseRadius);
+
+    let farEnemy = null, farPlayer = null, enemyScore = -Infinity, playerScore = -Infinity;
+    for (const island of islands) {
+      if (island === player || island === enemy) continue;
+      const es = dist(island.x,island.y,player.x,player.y) - dist(island.x,island.y,enemy.x,enemy.y) * 0.25;
+      const ps = dist(island.x,island.y,enemy.x,enemy.y) - dist(island.x,island.y,player.x,player.y) * 0.25;
+      if (es > enemyScore) { enemyScore = es; farEnemy = island; }
+      if (ps > playerScore) { playerScore = ps; farPlayer = island; }
+    }
+    if (farEnemy && farEnemy.owner === TEAM_NEUTRAL) { farEnemy.owner = TEAM_ENEMY; farEnemy.planes = Math.max(14, Math.round(farEnemy.baseRadius * 0.34)); }
+    if (farPlayer && farPlayer.owner === TEAM_NEUTRAL) { farPlayer.owner = TEAM_PLAYER; farPlayer.planes = Math.max(14, Math.round(farPlayer.baseRadius * 0.34)); }
+  }
+
+  function teamIslands(team) { return islands.filter(i => i.owner === team); }
+  function teamPlanes(team) {
+    let total = 0;
+    for (const i of islands) if (i.owner === team) total += i.planes;
+    for (const s of squadrons) if (s.owner === team) total += s.count;
+    return Math.round(total);
+  }
+
+  function teamCenter(team) {
+    const arr = teamIslands(team);
+    if (!arr.length) return { x: width * 0.5, y: height * 0.5 };
+    let x = 0, y = 0; for (const i of arr) { x += i.x; y += i.y; }
+    return { x: x / arr.length, y: y / arr.length };
+  }
+
+  function interestingTarget(source) {
+    const targets = islands.filter(i => i !== source && (i.owner !== source.owner || i.type !== 'standard'));
+    if (!targets.length) return source;
+    targets.sort((a,b) => {
+      const sa = dist(source.x,source.y,a.x,a.y) - ISLAND_TYPES[a.type].value * 22 - (a.owner === TEAM_ENEMY ? 18 : 0);
+      const sb = dist(source.x,source.y,b.x,b.y) - ISLAND_TYPES[b.type].value * 22 - (b.owner === TEAM_ENEMY ? 18 : 0);
+      return sa - sb;
+    });
+    return targets[0];
+  }
+
+  function aiUpdate(dt) {
+    if (state.mode !== 'running') return;
+    state.aiClock += dt;
+    state.difficulty = clamp(1 + state.time / 110, 1, 1.7);
+    const interval = clamp(0.72 - (state.difficulty - 1) * 0.23, 0.34, 0.72);
+    if (state.aiClock < interval) return;
+    state.aiClock = 0;
+
+    const enemy = teamIslands(TEAM_ENEMY);
+    const player = teamIslands(TEAM_PLAYER);
+    if (!enemy.length || !player.length) return;
+
+    const pCenter = teamCenter(TEAM_PLAYER);
+    let best = null;
+
+    for (const source of enemy) {
+      if (source.planes < 8) continue;
+      const sendFraction = source.planes > source.maxPlanes * 0.75 ? 0.58 : source.planes > 22 ? 0.48 : 0.36;
+      const sendCount = Math.floor(source.planes * sendFraction);
+      if (sendCount < 4) continue;
+      for (const target of islands) {
+        if (target === source) continue;
+        const d = dist(source.x, source.y, target.x, target.y);
+        const incoming = incomingThreat(target, TEAM_PLAYER);
+        const enemyFriendly = target.owner === TEAM_ENEMY;
+        const playerOwned = target.owner === TEAM_PLAYER;
+        const neutral = target.owner === TEAM_NEUTRAL;
+        let score = -9999;
+        let blitz = false;
+
+        if (enemyFriendly) {
+          const threat = incoming - incomingThreat(target, TEAM_ENEMY);
+          if (threat > 0 || target.planes < target.maxPlanes * 0.25) {
+            score = 18 + threat * 0.8 + (target.maxPlanes - target.planes) * 0.34 - d * 0.036 + (target.type === 'fortress' ? 14 : 0);
+          }
+        } else {
+          const projected = sendCount / (target.defense || 1);
+          const margin = projected - target.planes;
+          const typeValue = ISLAND_TYPES[target.type].value * 18;
+          const forward = Math.max(0, 1 - dist(target.x, target.y, pCenter.x, pCenter.y) / Math.max(width, height));
+          score = margin * 1.85 + typeValue + (playerOwned ? 18 : 7) + forward * 18 - d * 0.04;
+          if (target.type === 'factory') score += 12;
+          if (target.type === 'fuel') score += 8;
+          if (target.type === 'fortress') score += 6;
+          if (neutral && target.planes > sendCount * 0.95) score -= 30;
+          if (playerOwned && incoming > 0) score += incoming * 0.2;
+          if (margin > target.baseRadius * 0.18 && source.planes > 26) { score += 10; blitz = playerOwned && margin > 10; }
+        }
+        if (!best || score > best.score) best = { source, target, score, sendFraction, blitz };
+      }
+    }
+
+    if (best && best.score > 6) launchWave(best.source, best.target, clamp(best.sendFraction * state.difficulty * 0.95, 0.28, best.blitz ? 0.82 : 0.62), { isBlitz: best.blitz });
+  }
+
+  function updateHUD() {
+    const p = teamIslands(TEAM_PLAYER);
+    const e = teamIslands(TEAM_ENEMY);
+    playerStats.textContent = `${p.length} islands • ${teamPlanes(TEAM_PLAYER)} planes`;
+    enemyStats.textContent = `${e.length} islands • ${teamPlanes(TEAM_ENEMY)} planes`;
+    const ratio = teamPlanes(TEAM_ENEMY) / Math.max(1, teamPlanes(TEAM_PLAYER));
+    pressureStat.textContent = ratio < 0.75 ? 'Low' : ratio < 1.15 ? 'Balanced' : ratio < 1.5 ? 'High' : 'Severe';
+    aiStat.textContent = state.difficulty < 1.15 ? 'Adaptive' : state.difficulty < 1.45 ? 'Aggressive' : 'War Mode';
+    if (state.time > state.messageUntil) messageBar.textContent = state.selectedIsland ? 'Target locked. Tap another island to send 50%, or tap again for a heavy blitz.' : 'Capture factories early, use fortresses to hold fronts, and fuel islands to project fast strikes.';
+  }
+
+  function finishGame(winner) {
+    if (state.mode !== 'running') return;
+    state.mode = 'gameover';
+    state.winner = winner;
+    state.selectedIsland = null;
+    gameOverOverlay.classList.remove('hidden');
+    if (winner === TEAM_PLAYER) {
+      gameOverTitle.textContent = 'Victory';
+      gameOverText.textContent = 'You own the Pacific skies.';
+      playCapture(TEAM_PLAYER, 0);
+      playTone({ freq: 880, type: 'triangle', duration: 0.22, volume: 0.08, slide: 1.03, at: 0.18 });
+    } else {
+      gameOverTitle.textContent = 'Defeat';
+      gameOverText.textContent = 'Your air command collapsed. Launch another battle.';
+      playTone({ freq: 260, type: 'sawtooth', duration: 0.28, volume: 0.08, slide: 0.6, at: 0 });
+      playTone({ freq: 180, type: 'triangle', duration: 0.36, volume: 0.07, slide: 0.72, at: 0.1 });
+    }
+  }
+
+  function checkGameOver() {
+    if (state.mode !== 'running') return;
+    const pI = teamIslands(TEAM_PLAYER).length > 0;
+    const eI = teamIslands(TEAM_ENEMY).length > 0;
+    const pF = squadrons.some(s => s.owner === TEAM_PLAYER);
+    const eF = squadrons.some(s => s.owner === TEAM_ENEMY);
+    if (!pI && !pF) finishGame(TEAM_ENEMY);
+    else if (!eI && !eF) finishGame(TEAM_PLAYER);
+  }
+
+  function update(dt) {
+    state.time += dt;
+    playMusic(dt);
+    islands.forEach(i => i.update(dt));
+    aiUpdate(dt);
+
+    for (let i = squadrons.length - 1; i >= 0; i--) if (squadrons[i].update(dt)) squadrons.splice(i, 1);
+    for (let i = bombs.length - 1; i >= 0; i--) if (bombs[i].update(dt)) bombs.splice(i, 1);
+    for (let i = particles.length - 1; i >= 0; i--) if (particles[i].update(dt)) particles.splice(i, 1);
+    for (let i = ripples.length - 1; i >= 0; i--) if (ripples[i].update(dt)) ripples.splice(i, 1);
+    for (let i = decals.length - 1; i >= 0; i--) if (decals[i].update(dt)) decals.splice(i, 1);
+
+    state.shake = Math.max(0, state.shake - dt * 18);
+    updateHUD();
+    checkGameOver();
+  }
+
+  function drawBackground() {
+    ctx.fillStyle = buildPattern() || '#08243d';
+    ctx.fillRect(0, 0, width, height);
+
+    const sky = ctx.createLinearGradient(0,0,0,height);
+    sky.addColorStop(0,'rgba(24,146,210,0.16)');
+    sky.addColorStop(.45,'rgba(17,88,144,0.1)');
+    sky.addColorStop(1,'rgba(0,0,0,0.08)');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0,0,width,height);
+
+    stars.forEach(st => {
+      ctx.fillStyle = `rgba(255,255,255,${st.a + Math.sin(state.time * 1.5 + st.phase) * 0.03})`;
+      ctx.beginPath(); ctx.arc(st.x, st.y, st.s, 0, Math.PI * 2); ctx.fill();
+    });
+
+    for (const c of clouds) {
+      const x = (c.x + state.time * c.drift) % (width + c.r * 2) - c.r;
+      const y = c.y + Math.sin(state.time * 0.18 + c.phase) * 8;
+      const g = ctx.createRadialGradient(x, y, c.r * 0.2, x, y, c.r);
+      g.addColorStop(0, `rgba(255,255,255,${c.a})`);
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, c.r, 0, Math.PI * 2); ctx.fill();
+    }
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.035)';
+    ctx.lineWidth = 1;
+    const spacing = 72;
+    const off = (state.time * 12) % spacing;
+    for (let y = -spacing; y < height + spacing; y += spacing) {
+      ctx.beginPath();
+      ctx.moveTo(0, y + off);
+      for (let x = 0; x <= width; x += 32) ctx.lineTo(x, y + off + Math.sin((x + state.time * 40) * 0.02 + y * 0.01) * 5);
+      ctx.stroke();
+    }
+  }
+
+  function drawSelection() {
+    if (!state.selectedIsland || state.mode !== 'running') return;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(99,246,255,0.35)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8,8]);
+    for (const island of islands) {
+      if (island === state.selectedIsland) continue;
+      ctx.beginPath(); ctx.moveTo(state.selectedIsland.x, state.selectedIsland.y); ctx.lineTo(island.x, island.y); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  function render() {
+    drawBackground();
+    if (state.shake > 0) {
+      ctx.save();
+      ctx.translate(rand(-state.shake, state.shake), rand(-state.shake, state.shake));
+    }
+    drawSelection();
+    islands.forEach(i => i.draw(ctx));
+    decals.forEach(d => d.draw(ctx));
+    ripples.forEach(r => r.draw(ctx));
+    bombs.forEach(b => b.draw(ctx));
+    squadrons.forEach(s => s.draw(ctx));
+    particles.forEach(p => p.draw(ctx));
+    if (state.shake > 0) ctx.restore();
+  }
+
+  function newGame() {
+    buildMap();
+    state.mode = 'running';
+    state.time = 0;
+    state.selectedIsland = null;
+    state.difficulty = 1;
+    state.aiClock = 0;
+    state.musicClock = 0;
+    state.shake = 0;
+    gameOverOverlay.classList.add('hidden');
+    startOverlay.classList.add('hidden');
+    hud.classList.remove('hidden');
+    legend.classList.remove('hidden');
+    restartBtn.classList.remove('hidden');
+    setMessage('Air command online. Seize the map.', 2.4);
+    updateHUD();
+  }
+
+  function begin() {
+    ensureAudio();
+    newGame();
+    playTone({ freq: 330, type: 'triangle', duration: 0.12, volume: 0.04, slide: 1.08, at: 0 });
+    playTone({ freq: 494, type: 'triangle', duration: 0.16, volume: 0.05, slide: 1.06, at: 0.07 });
+    playTone({ freq: 660, type: 'triangle', duration: 0.18, volume: 0.06, slide: 1.04, at: 0.14 });
+  }
+
+  function islandAt(x, y) {
+    for (const island of islands) if (dist(x, y, island.x, island.y) <= island.baseRadius * 1.02) return island;
+    return null;
+  }
+
+  function handleTap(x, y) {
+    if (state.mode !== 'running') return;
+    ensureAudio();
+    const island = islandAt(x, y);
+    if (state.selectedIsland) {
+      if (island === state.selectedIsland) {
+        const target = interestingTarget(state.selectedIsland);
+        const ok = launchWave(state.selectedIsland, target, 0.82, { isBlitz: true });
+        if (ok) setMessage('Blitz wave launched.', 1.4);
+        state.selectedIsland = null;
+        return;
+      }
+      if (island && island !== state.selectedIsland) {
+        const ok = launchWave(state.selectedIsland, island, 0.5, { isBlitz: false });
+        if (ok) setMessage(island.owner === TEAM_PLAYER ? 'Reinforcements launched.' : 'Strike wave airborne.', 1.3);
+      }
+      state.selectedIsland = null;
+      return;
+    }
+    if (island && island.owner === TEAM_PLAYER) {
+      state.selectedIsland = island;
+      island.capturePulse = 0.5;
+      setMessage('Island selected. Choose a target.', 1.2);
+      const pan = clamp((island.x / Math.max(1, width)) * 2 - 1, -1, 1);
+      playTone({ freq: 520, type: 'triangle', duration: 0.08, volume: 0.035, slide: 1.08, pan });
+    }
+  }
+
+  function pointerPos(ev) {
+    const rect = canvas.getBoundingClientRect();
+    if (ev.touches && ev.touches[0]) return { x: ev.touches[0].clientX - rect.left, y: ev.touches[0].clientY - rect.top };
+    if (ev.changedTouches && ev.changedTouches[0]) return { x: ev.changedTouches[0].clientX - rect.left, y: ev.changedTouches[0].clientY - rect.top };
+    return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+  }
+
+  canvas.addEventListener('touchstart', ev => { ev.preventDefault(); const p = pointerPos(ev); handleTap(p.x, p.y); }, { passive: false });
+  canvas.addEventListener('mousedown', ev => { const p = pointerPos(ev); handleTap(p.x, p.y); });
+  startBtn.addEventListener('click', begin);
+  againBtn.addEventListener('click', begin);
+  restartBtn.addEventListener('click', begin);
+  window.addEventListener('resize', resize, { passive: true });
+  document.addEventListener('visibilitychange', () => { lastTime = 0; });
+
+  let lastTime = 0;
+  function loop(ts) {
+    if (!lastTime) lastTime = ts;
+    let dt = (ts - lastTime) / 1000;
+    lastTime = ts;
+    dt = Math.min(dt, 0.05);
+    if (state.mode === 'running') update(dt); else state.time += dt;
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  resize();
+  buildAssets();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
