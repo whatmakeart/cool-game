@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta ="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>Pacific Strike: Sky Dominion</title>
 <style>
 :root{
@@ -21,7 +21,7 @@ html,body{
 }
 canvas{display:block;width:100vw;height:100vh;}
 button{
-  appearance:none;border:none;border-radius:999px;padding:12px 16px;
+  appearance:none;border:none;border-:999px;padding:12px 16px;
   font:inherit;font-weight:800;letter-spacing:.04em;cursor:pointer;
 }
 #startOverlay,#gameOverOverlay{
@@ -511,6 +511,379 @@ button{
       playTone({freq:root * 2.02, type:'triangle', duration:0.06, volume:0.008, slide:1.03, at:0.12, pan:0.1});
     }
   }
+
+
+  class Island {
+    constructor(x, y, radius, owner, type='standard'){
+      this.x = x;
+      this.y = y;
+      this.baseRadius = radius;
+      this.owner = owner;
+      this.type = type;
+      this.prodBase = radius / 40;
+      this.productionRate = this.prodBase * ISLAND_TYPES[type].prod;
+      this.defense = ISLAND_TYPES[type].defense;
+      this.speedMul = ISLAND_TYPES[type].speed;
+      this.heavyBias = ISLAND_TYPES[type].heavyBias;
+      this.maxPlanes = Math.round(radius * 1.84 * ISLAND_TYPES[type].value);
+      this.planes = owner === TEAM_NEUTRAL ? Math.round(radius * rand(0.18, 0.34)) : Math.round(radius * 0.55 + 12);
+
+      this.pulse = rand(0, Math.PI * 2);
+      this.capturePulse = 0;
+      this.warningPulse = 0;
+      this.hitShake = 0;
+      this.hitPhase = rand(0, Math.PI * 2);
+      this.runwayAngle = rand(-Math.PI, Math.PI);
+      this.harborAngle = rand(-Math.PI, Math.PI);
+
+      this.shield = 0;
+      this.shieldTimer = 0;
+      this.overdriveTimer = 0;
+      this.stunTimer = 0;
+      this.pickupType = null;
+      this.pickupPulse = rand(0, Math.PI * 2);
+
+      this.textureDots = Array.from({length: Math.round(radius * 0.6)}, () => {
+        const a = rand(0, Math.PI * 2), r = rand(0, radius * 0.56);
+        return { x: Math.cos(a) * r, y: Math.sin(a) * r, s: rand(1.2, 3.4), t: Math.random() };
+      });
+
+      this.coast = [];
+      this.inner = [];
+      this.reef = [];
+      this.initShape();
+    }
+
+    initShape(){
+      const points = 28;
+      const p0 = rand(0, Math.PI * 2), p1 = rand(0, Math.PI * 2), p2 = rand(0, Math.PI * 2);
+      this.coast = [];
+      this.inner = [];
+      this.reef = [];
+      for (let i = 0; i < points; i++){
+        const a = (i / points) * Math.PI * 2;
+        const jitter = 1 + Math.sin(a * 3 + p0) * 0.08 + Math.sin(a * 5 + p1) * 0.05 + Math.sin(a * 2 + p2) * 0.04 + rand(-0.05, 0.05);
+        const coastR = this.baseRadius * clamp(jitter, 0.78, 1.24);
+        const shoreFactor = clamp(0.70 + Math.sin(a * 4 + p1) * 0.04 + rand(-0.03, 0.03), 0.63, 0.82);
+        const reefFactor = clamp(1.10 + Math.sin(a * 3 + p2) * 0.08 + rand(-0.04, 0.04), 1.03, 1.26);
+        this.coast.push({ x: Math.cos(a) * coastR, y: Math.sin(a) * coastR });
+        this.inner.push({ x: Math.cos(a) * (coastR * shoreFactor), y: Math.sin(a) * (coastR * shoreFactor) });
+        this.reef.push({ x: Math.cos(a) * (coastR * reefFactor), y: Math.sin(a) * (coastR * reefFactor) });
+      }
+    }
+
+    update(dt){
+      this.pulse += dt * 2.2;
+      this.pickupPulse += dt * 3.2;
+      this.capturePulse = Math.max(0, this.capturePulse - dt * 1.5);
+      this.warningPulse = Math.max(0, this.warningPulse - dt * 0.9);
+      this.hitShake = Math.max(0, this.hitShake - dt * 4.8);
+      this.shieldTimer = Math.max(0, this.shieldTimer - dt);
+      this.overdriveTimer = Math.max(0, this.overdriveTimer - dt);
+      this.stunTimer = Math.max(0, this.stunTimer - dt);
+      if (this.shieldTimer <= 0) this.shield = Math.max(0, this.shield - dt * 3.5);
+
+      const hostile = incomingThreat(this, this.owner === TEAM_PLAYER ? TEAM_ENEMY : TEAM_PLAYER);
+      if (this.owner !== TEAM_NEUTRAL && hostile > this.planes * 0.55){
+        this.warningPulse = Math.min(1, this.warningPulse + dt * 1.7);
+      }
+
+      if (this.owner !== TEAM_NEUTRAL && this.planes < this.maxPlanes){
+        let prodMul = 1;
+        if (this.overdriveTimer > 0) prodMul *= 1.55;
+        if (this.stunTimer > 0) prodMul *= 0.35;
+        this.planes = Math.min(this.maxPlanes, this.planes + this.productionRate * dt * prodMul);
+      }
+    }
+
+    structureLevel(){
+      const ratio = this.planes / Math.max(1, this.maxPlanes);
+      if (ratio > 0.82) return 4;
+      if (ratio > 0.62) return 3;
+      if (ratio > 0.38) return 2;
+      if (ratio > 0.18) return 1;
+      return 0;
+    }
+
+    beginHit(power = 1){
+      this.hitShake = Math.max(this.hitShake, Math.min(1.4, power));
+    }
+
+    path(ctx, pts){
+      ctx.beginPath();
+      pts.forEach((v, i) => i ? ctx.lineTo(v.x, v.y) : ctx.moveTo(v.x, v.y));
+      ctx.closePath();
+    }
+
+    draw(ctx){
+      const team = TEAMS[this.owner];
+      const selected = this === state.selectedIsland;
+      const pulseScale = selected ? 1 + Math.sin(this.pulse * 8) * 0.045 : 1;
+      const radius = this.baseRadius * pulseScale;
+      const shakeX = this.hitShake > 0 ? Math.sin(state.time * 48 + this.hitPhase) * this.hitShake * 2.4 : 0;
+      const shakeY = this.hitShake > 0 ? Math.cos(state.time * 42 + this.hitPhase * 1.3) * this.hitShake * 2.1 : 0;
+
+      ctx.save();
+      ctx.translate(this.x + shakeX, this.y + shakeY);
+
+      const reefGrad = ctx.createRadialGradient(0, 0, radius * 0.18, 0, 0, radius * 1.35);
+      reefGrad.addColorStop(0, 'rgba(124,218,255,0.12)');
+      reefGrad.addColorStop(1, 'rgba(124,218,255,0)');
+      ctx.fillStyle = reefGrad;
+      this.path(ctx, this.reef);
+      ctx.fill();
+
+      if (this.capturePulse > 0 || this.warningPulse > 0 || this.shield > 0 || this.overdriveTimer > 0 || this.stunTimer > 0){
+        ctx.save();
+        if (this.warningPulse > 0){
+          ctx.globalAlpha = 0.22 + this.warningPulse * 0.24;
+          ctx.strokeStyle = 'rgba(255,218,105,0.78)';
+          ctx.lineWidth = 2 + this.warningPulse * 2;
+          ctx.beginPath(); ctx.arc(0, 0, radius + 15, 0, Math.PI * 2); ctx.stroke();
+        }
+        if (this.capturePulse > 0){
+          ctx.globalAlpha = 0.2 + this.capturePulse * 0.28;
+          ctx.strokeStyle = team.glow;
+          ctx.lineWidth = 2 + this.capturePulse * 3;
+          ctx.beginPath(); ctx.arc(0, 0, radius + 12 + this.capturePulse * 8, 0, Math.PI * 2); ctx.stroke();
+        }
+        if (this.shield > 0){
+          ctx.globalAlpha = 0.32;
+          ctx.strokeStyle = 'rgba(215,248,255,0.95)';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath(); ctx.arc(0, 0, radius + 8 + Math.sin(state.time * 6) * 1.5, 0, Math.PI * 2); ctx.stroke();
+        }
+        if (this.overdriveTimer > 0){
+          ctx.globalAlpha = 0.26;
+          ctx.strokeStyle = 'rgba(127,248,255,0.95)';
+          ctx.lineWidth = 2.1;
+          ctx.beginPath(); ctx.arc(0, 0, radius + 4 + Math.sin(state.time * 10 + this.pulse) * 2, 0, Math.PI * 2); ctx.stroke();
+        }
+        if (this.stunTimer > 0){
+          ctx.globalAlpha = 0.3;
+          ctx.strokeStyle = 'rgba(255,215,110,0.95)';
+          ctx.lineWidth = 1.8;
+          for (let i = 0; i < 4; i++){
+            const a = state.time * 6 + i * Math.PI * 0.5;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(a) * (radius + 3), Math.sin(a) * (radius + 3));
+            ctx.lineTo(Math.cos(a) * (radius + 11), Math.sin(a) * (radius + 11));
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+      }
+
+      ctx.shadowColor = team.ring;
+      ctx.shadowBlur = selected ? 24 : 11;
+      ctx.lineJoin = 'round';
+
+      ctx.fillStyle = team.sand;
+      this.path(ctx, this.coast);
+      ctx.fill();
+
+      const landGrad = ctx.createLinearGradient(-radius, -radius, radius, radius);
+      landGrad.addColorStop(0, team.fill);
+      landGrad.addColorStop(1, team.fill2);
+      ctx.fillStyle = landGrad;
+      this.path(ctx, this.inner);
+      ctx.fill();
+
+      ctx.shadowBlur = 0;
+
+      ctx.save();
+      this.path(ctx, this.inner);
+      ctx.clip();
+      for (const d of this.textureDots){
+        ctx.fillStyle = d.t > 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(22,50,21,0.12)';
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.s * (0.8 + Math.sin(state.time * 0.6 + d.t * 6) * 0.08), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      this.drawStructures(ctx, radius);
+      ctx.restore();
+
+      ctx.strokeStyle = team.ring;
+      ctx.lineWidth = selected ? 4.7 : 3;
+      this.path(ctx, this.coast);
+      ctx.stroke();
+
+      this.drawHarbor(ctx, radius);
+      this.drawRunway(ctx, radius);
+      this.drawPickup(ctx, radius);
+
+      ctx.restore();
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+      ctx.lineWidth = 4;
+      ctx.font = `800 ${Math.round(clamp(radius * 0.40, 16, 29))}px Inter,system-ui,sans-serif`;
+      const txt = String(Math.floor(this.planes));
+      ctx.strokeText(txt, this.x + shakeX, this.y + shakeY + 1);
+      ctx.fillStyle = team.number;
+      ctx.fillText(txt, this.x + shakeX, this.y + shakeY + 1);
+      if (this.type !== 'standard'){
+        ctx.font = `700 ${Math.round(clamp(radius * 0.35, 14, 23))}px Inter,system-ui,sans-serif`;
+        ctx.fillStyle = this.type === 'factory' ? '#ffe885' : this.type === 'fortress' ? '#edf8ff' : this.type === 'fuel' ? '#ffd3a2' : '#ffe6b5';
+        ctx.strokeText(ISLAND_TYPES[this.type].label, this.x + shakeX, this.y + shakeY - radius * 0.74);
+        ctx.fillText(ISLAND_TYPES[this.type].label, this.x + shakeX, this.y + shakeY - radius * 0.74);
+      }
+      ctx.restore();
+    }
+
+    drawRunway(ctx, radius){
+      ctx.save();
+      ctx.rotate(this.runwayAngle);
+      const rlen = radius * 0.92;
+      ctx.strokeStyle = 'rgba(33,44,49,0.92)';
+      ctx.lineWidth = Math.max(3, radius * 0.12);
+      ctx.beginPath();
+      ctx.moveTo(-rlen * 0.34, 0);
+      ctx.lineTo(rlen * 0.34, 0);
+      ctx.stroke();
+      ctx.setLineDash([6,4]);
+      ctx.lineWidth = 1.3;
+      ctx.strokeStyle = 'rgba(255,255,255,0.62)';
+      ctx.beginPath();
+      ctx.moveTo(-rlen * 0.26, 0);
+      ctx.lineTo(rlen * 0.26, 0);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    drawHarbor(ctx, radius){
+      const a = this.harborAngle;
+      const nx = Math.cos(a), ny = Math.sin(a);
+      const tx = -ny, ty = nx;
+      const px = nx * radius * 0.86;
+      const py = ny * radius * 0.86;
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.strokeStyle = 'rgba(36,44,52,0.85)';
+      ctx.lineWidth = Math.max(2, radius * 0.06);
+      ctx.beginPath();
+      ctx.moveTo(-tx * radius * 0.10, -ty * radius * 0.10);
+      ctx.lineTo(nx * radius * 0.26 - tx * radius * 0.12, ny * radius * 0.26 - ty * radius * 0.12);
+      ctx.lineTo(nx * radius * 0.26 + tx * radius * 0.12, ny * radius * 0.26 + ty * radius * 0.12);
+      ctx.lineTo(tx * radius * 0.10, ty * radius * 0.10);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(nx * radius * 0.11, ny * radius * 0.11);
+      ctx.lineTo(nx * radius * 0.23, ny * radius * 0.23);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    drawPickup(ctx, radius){
+      if (!this.pickupType) return;
+      const conf = PICKUP_TYPES[this.pickupType];
+      const y = -radius - 16 - Math.sin(this.pickupPulse) * 3;
+      ctx.save();
+      ctx.shadowColor = conf.color;
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = conf.color;
+      ctx.beginPath();
+      ctx.arc(0, y, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, y, 14 + Math.sin(this.pickupPulse * 2) * 1.5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      ctx.font = '700 12px Inter,system-ui,sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(conf.icon, 0, y + 0.5);
+      ctx.restore();
+    }
+
+    drawStructures(ctx, radius){
+      const level = this.structureLevel();
+      if (level <= 0) return;
+      const topColor = this.owner === TEAM_PLAYER ? '#dffcff' : this.owner === TEAM_ENEMY ? '#ffe4e8' : '#f2f5f7';
+      const leftColor = this.owner === TEAM_PLAYER ? '#8eefff' : this.owner === TEAM_ENEMY ? '#ff9eaa' : '#cfd6dc';
+      const rightColor = this.owner === TEAM_PLAYER ? '#56d3ea' : this.owner === TEAM_ENEMY ? '#e36c7b' : '#a7b1ba';
+      const outline = 'rgba(0,0,0,0.24)';
+
+      const isoBlock = (x,y,w,d,h) => {
+        ctx.save();
+        ctx.translate(x,y);
+        ctx.beginPath();
+        ctx.moveTo(0,-h); ctx.lineTo(w*0.5,-h+d*0.28); ctx.lineTo(0,-h+d*0.56); ctx.lineTo(-w*0.5,-h+d*0.28);
+        ctx.closePath();
+        ctx.fillStyle = topColor; ctx.fill(); ctx.strokeStyle = outline; ctx.lineWidth = 1; ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(-w*0.5,-h+d*0.28); ctx.lineTo(0,-h+d*0.56); ctx.lineTo(0,0); ctx.lineTo(-w*0.5,-d*0.28);
+        ctx.closePath();
+        ctx.fillStyle = leftColor; ctx.fill(); ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(w*0.5,-h+d*0.28); ctx.lineTo(0,-h+d*0.56); ctx.lineTo(0,0); ctx.lineTo(w*0.5,-d*0.28);
+        ctx.closePath();
+        ctx.fillStyle = rightColor; ctx.fill(); ctx.stroke();
+        ctx.restore();
+      };
+
+      const hangar = (x,y,w,h) => {
+        ctx.save(); ctx.translate(x,y);
+        ctx.beginPath();
+        ctx.moveTo(-w*0.5,0); ctx.lineTo(-w*0.5,-h*0.35); ctx.quadraticCurveTo(0,-h,w*0.5,-h*0.35); ctx.lineTo(w*0.5,0);
+        ctx.closePath();
+        ctx.fillStyle = leftColor; ctx.fill(); ctx.strokeStyle = outline; ctx.lineWidth = 1; ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-w*0.36,-h*0.18); ctx.quadraticCurveTo(0,-h*0.55,w*0.36,-h*0.18);
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.4; ctx.stroke();
+        ctx.restore();
+      };
+
+      const tower = (x,y,h,w) => {
+        isoBlock(x,y,w,w*0.85,h);
+        ctx.save(); ctx.translate(x,y-h);
+        ctx.strokeStyle = rightColor; ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-w*0.55); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0,-w*0.7,w*0.18,0,Math.PI*2);
+        ctx.fillStyle = topColor; ctx.fill(); ctx.strokeStyle = outline; ctx.stroke();
+        ctx.restore();
+      };
+
+      const tank = (x,y,r) => {
+        ctx.save(); ctx.translate(x,y);
+        ctx.fillStyle = leftColor;
+        ctx.beginPath(); ctx.ellipse(0,0,r,r*0.52,0,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle = outline; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = topColor;
+        ctx.beginPath(); ctx.ellipse(0,-r*0.28,r*0.9,r*0.4,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      };
+
+      const radar = (x,y,r) => {
+        ctx.save(); ctx.translate(x,y);
+        ctx.strokeStyle = leftColor; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-r*1.2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0,-r*1.42,r,-Math.PI*0.35,Math.PI*0.15); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.1;
+        ctx.beginPath(); ctx.arc(0,-r*1.42,r*0.62,-Math.PI*0.26,Math.PI*0.06); ctx.stroke();
+        ctx.restore();
+      };
+
+      ctx.save();
+      ctx.translate(0, radius * 0.10);
+      if (level >= 1){ hangar(-radius*0.18,0,radius*0.30,radius*0.22); tower(radius*0.16,0,radius*0.24,radius*0.15); }
+      if (level >= 2){ tank(radius*0.32,radius*0.07,radius*0.10); hangar(0,radius*0.10,radius*0.22,radius*0.16); }
+      if (level >= 3){ tower(-radius*0.04,-radius*0.03,radius*0.31,radius*0.16); radar(-radius*0.34,radius*0.07,radius*0.10); }
+      if (level >= 4){ tower(radius*0.32,-radius*0.06,radius*0.38,radius*0.16); tank(-radius*0.08,radius*0.14,radius*0.11); }
+      ctx.restore();
+    }
+  }
+
 
   class Squadron {
     constructor(source,target,count,owner,opts={}){
