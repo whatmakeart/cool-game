@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Color Matter Pop</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0f172a;
+            overflow: hidden;
+            touch-action: none; /* Prevents mobile scrolling/zooming */
+            font-family: system-ui, -apple-system, sans-serif;
+            color: white;
+        }
+
+        #game-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* CSS-based graphics for the orbs */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            top: 0;
+            left: 0;
+            transform-origin: center;
+            box-shadow: inset -5px -5px 15px rgba(0,0,0,0.4), 0 0 10px rgba(255,255,255,0.2);
+            transition: transform 0.05s linear;
+        }
+
+        /* The Cannon built with SVG */
+        #cannon-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 80px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <h2>Color Matter Pop</h2>
+        <p>Tap to shoot. Match colors to clear them!</p>
+    </div>
+
+    <div id="game-container"></div>
+
+    <div id="cannon-container">
+        <svg viewBox="0 0 100 100" width="100%" height="100%">
+            <circle cx="50" cy="80" r="20" fill="#334155" />
+            <circle id="next-color-indicator" cx="50" cy="80" r="10" fill="#fff" />
+            <path d="M 40 80 L 45 20 L 55 20 L 60 80 Z" fill="#475569" />
+        </svg>
+    </div>
+
+    <script>
+        // --- Audio Synthesizer (No external files needed) ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            if (type === 'shoot') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'pop') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+                gain.gain.setValueAtTime(0.5, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            }
+        }
+
+        // --- Game Logic & Physics ---
+        const colors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7'];
+        const container = document.getElementById('game-container');
+        const nextColorIndicator = document.getElementById('next-color-indicator');
+        
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        let nextColor = colors[Math.floor(Math.random() * colors.length)];
+        nextColorIndicator.setAttribute('fill', nextColor);
+
+        // Matter.js Aliases
+        const Engine = Matter.Engine,
+              Render = Matter.Render,
+              World = Matter.World,
+              Bodies = Matter.Bodies,
+              Body = Matter.Body,
+              Events = Matter.Events,
+              Composite = Matter.Composite;
+
+        // Create Engine with zero gravity so things float around
+        const engine = Engine.create();
+        engine.world.gravity.y = 0; 
+        engine.world.gravity.x = 0;
+
+        let balls = []; // Keep track of physics bodies and their DOM elements
+
+        // Create Walls
+        const wallOptions = { isStatic: true, render: { visible: false } };
+        const ground = Bodies.rectangle(width / 2, height + 25, width, 50, wallOptions);
+        const leftWall = Bodies.rectangle(-25, height / 2, 50, height, wallOptions);
+        const rightWall = Bodies.rectangle(width + 25, height / 2, 50, height, wallOptions);
+        const ceiling = Bodies.rectangle(width / 2, -25, width, 50, wallOptions);
+        World.add(engine.world, [ground, leftWall, rightWall, ceiling]);
+
+        function createBall(x, y, radius, color, isProjectile = false) {
+            // Create DOM Element
+            const el = document.createElement('div');
+            el.className = 'orb';
+            el.style.width = (radius * 2) + 'px';
+            el.style.height = (radius * 2) + 'px';
+            el.style.background = `radial-gradient(circle at 30% 30%, ${color}, #000)`;
+            container.appendChild(el);
+
+            // Create Physics Body
+            const body = Bodies.circle(x, y, radius, {
+                restitution: 0.9, // Bouncy
+                frictionAir: 0.01, // Slight drag
+                friction: 0.001,
+                density: 0.05
+            });
+
+            // If it's starting as a target, give it a random gentle nudge
+            if (!isProjectile) {
+                Body.setVelocity(body, { 
+                    x: (Math.random() - 0.5) * 5, 
+                    y: (Math.random() - 0.5) * 5 
+                });
+            }
+
+            World.add(engine.world, body);
+
+            const ballObj = { body, el, color, radius, isProjectile };
+            balls.push(ballObj);
+            return ballObj;
+        }
+
+        function removeBall(ballObj) {
+            World.remove(engine.world, ballObj.body);
+            if (ballObj.el.parentNode) {
+                ballObj.el.parentNode.removeChild(ballObj.el);
+            }
+            balls = balls.filter(b => b !== ballObj);
+        }
+
+        // Spawn initial cluster of balls
+        for (let i = 0; i < 15; i++) {
+            const rColor = colors[Math.floor(Math.random() * colors.length)];
+            createBall(width/2 + (Math.random()-0.5)*100, height/4 + (Math.random()-0.5)*100, 20, rColor);
+        }
+
+        // Handle Shooting
+        document.body.addEventListener('pointerdown', (e) => {
+            initAudio(); // Required to unlock audio context on first interaction
+            playSound('shoot');
+
+            const startX = width / 2;
+            const startY = height - 40;
+            const targetX = e.clientX;
+            const targetY = e.clientY;
+
+            // Calculate angle and velocity
+            const angle = Math.atan2(targetY - startY, targetX - startX);
+            const forceMagnitude = 40; 
+            const velocityX = Math.cos(angle) * forceMagnitude;
+            const velocityY = Math.sin(angle) * forceMagnitude;
+
+            // Fire the ball
+            const projectile = createBall(startX, startY - 40, 20, nextColor, true);
+            Body.setVelocity(projectile.body, { x: velocityX, y: velocityY });
+
+            // Set up next color
+            nextColor = colors[Math.floor(Math.random() * colors.length)];
+            nextColorIndicator.setAttribute('fill', nextColor);
+        });
+
+        // Collision Logic
+        Events.on(engine, 'collisionStart', function(event) {
+            const pairs = event.pairs;
+            let ballsToRemove = new Set();
+
+            for (let i = 0; i < pairs.length; i++) {
+                const bodyA = pairs[i].bodyA;
+                const bodyB = pairs[i].bodyB;
+
+                const ballA = balls.find(b => b.body === bodyA);
+                const ballB = balls.find(b => b.body === bodyB);
+
+                if (ballA && ballB) {
+                    // Check if one was a projectile colliding with a target
+                    if ((ballA.isProjectile || ballB.isProjectile)) {
+                        
+                        if (ballA.color === ballB.color) {
+                            // Match! Mark for removal
+                            ballsToRemove.add(ballA);
+                            ballsToRemove.add(ballB);
+                            playSound('pop');
+                        } else {
+                            // No match. The projectile becomes a normal target ball
+                            ballA.isProjectile = false;
+                            ballB.isProjectile = false;
+                        }
+                    }
+                }
+            }
+
+            // Remove matched balls safely outside the physics loop step
+            ballsToRemove.forEach(ball => removeBall(ball));
+        });
+
+        // Game Loop to sync Physics Engine to DOM CSS
+        function update() {
+            Engine.update(engine, 1000 / 60);
+
+            balls.forEach(ball => {
+                const { x, y } = ball.body.position;
+                // Translate the top-left of the DOM element to the physics body center
+                ball.el.style.transform = `translate(${x - ball.radius}px, ${y - ball.radius}px)`;
+            });
+
+            requestAnimationFrame(update);
+        }
+
+        update();
+
+        // Handle Window Resize dynamically
+        window.addEventListener('resize', () => {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            
+            // Move walls
+            Body.setPosition(ground, { x: width / 2, y: height + 25 });
+            Body.setPosition(rightWall, { x: width + 25, y: height / 2 });
+            Body.setPosition(ceiling, { x: width / 2, y: -25 });
+        });
+
+    </script>
+</body>
+</html>
