@@ -654,6 +654,8 @@ button{
     const buttonPad = 16;
     const buttonZoneW = 210;
     const buttonZoneH = 176;
+    const leftUiPad = 62;
+    if (x < leftUiPad + r) return true;
     if (x > width - buttonZoneW - r - buttonPad && y > height - buttonZoneH - r - buttonPad) return true;
     return false;
   }
@@ -661,50 +663,104 @@ button{
   function buildMap(){
     islands=[]; squadrons=[]; bombs=[]; particles=[]; ripples=[]; decals=[];
     const safeTop=72, safeBottom=46;
-    const reservedArea = 210 * 176;
-    const usableArea = Math.max(1, width * height - reservedArea);
-    let count = clamp(Math.floor(usableArea / 52000), 7, 13);
-    for (let i=0;i<count;i++){
-      let placed=false;
-      for (let a=0;a<420 && !placed;a++){
-        const radius=rand(28,54); const x=rand(radius+16,width-radius-16); const y=rand(radius+safeTop,height-radius-safeBottom);
-        if (invalidSpawnZone(x,y,radius)) continue;
-        let ok=true; for (const other of islands){ if (dist(x,y,other.x,other.y) < radius + other.baseRadius + 42){ ok=false; break; } }
-        if (!ok) continue;
-        const bag=['standard','standard','standard','factory','fortress','fuel','heavy']; const type=(i<2||i>count-3)?'standard':bag[Math.floor(Math.random()*bag.length)]; islands.push(new Island(x,y,radius,TEAM_NEUTRAL,type)); placed=true;
-      }
-    }
-    if (islands.length < 6){
-      // Fallback for narrow mobile screens: use fewer islands and looser packing.
-      islands=[];
-      count = 6;
-      for (let i=0;i<count;i++){
-        let placed=false;
-        for (let a=0;a<520 && !placed;a++){
-          const radius=rand(28,50);
-          const x=rand(radius+16,width-radius-16);
-          const y=rand(radius+safeTop,height-radius-safeBottom);
+    const diff = currentDifficulty();
+    const bag=['standard','standard','standard','factory','fortress','fuel','heavy'];
+
+    const tryBuild = (desiredCount, spacingPad, attemptsPerIsland=260) => {
+      const made = [];
+      for (let i=0; i<desiredCount; i++){
+        let placed = false;
+        for (let a=0; a<attemptsPerIsland && !placed; a++){
+          const radius = rand(28, desiredCount <= 6 ? 50 : 54);
+          const x = rand(radius + 18, width - radius - 18);
+          const y = rand(radius + safeTop, height - radius - safeBottom);
           if (invalidSpawnZone(x,y,radius)) continue;
-          let ok=true;
-          for (const other of islands){ if (dist(x,y,other.x,other.y) < radius + other.baseRadius + 28){ ok=false; break; } }
+          let ok = true;
+          for (const other of made){
+            if (dist(x,y,other.x,other.y) < radius + other.baseRadius + spacingPad){ ok=false; break; }
+          }
           if (!ok) continue;
-          const bag=['standard','standard','factory','fortress','fuel','heavy'];
-          const type=(i<2||i>count-3)?'standard':bag[Math.floor(Math.random()*bag.length)];
-          islands.push(new Island(x,y,radius,TEAM_NEUTRAL,type));
-          placed=true;
+          const type=(i<2||i>desiredCount-3)?'standard':bag[Math.floor(Math.random()*bag.length)];
+          made.push(new Island(x,y,radius,TEAM_NEUTRAL,type));
+          placed = true;
         }
       }
-      if (islands.length < 4) return;
+      return made;
+    };
+
+    const reservedArea = panelReservedWidth() * 120 + 210 * 176;
+    let targetCount = clamp(Math.floor(Math.max(1, width * height - reservedArea) / 56000), 6, 12);
+    if (width < 430 || height < 760) targetCount = Math.min(targetCount, 7);
+    if (width < 390) targetCount = Math.min(targetCount, 6);
+
+    let best = [];
+    for (let desired = targetCount; desired >= 5 && best.length < 5; desired--){
+      for (const pad of [42, 34, 28]){
+        const built = tryBuild(desired, pad, desired <= 6 ? 520 : 360);
+        if (built.length > best.length) best = built;
+        if (built.length >= desired){ best = built; desired = 0; break; }
+      }
     }
-    let best=[0,1,0]; for (let i=0;i<islands.length;i++){ for (let j=i+1;j<islands.length;j++){ const d=dist(islands[i].x,islands[i].y,islands[j].x,islands[j].y); if (d>best[2]) best=[i,j,d]; }}
-    const player=islands[best[0]], enemy=islands[best[1]];
-    player.owner=TEAM_PLAYER; enemy.owner=TEAM_ENEMY; player.baseRadius=Math.max(player.baseRadius,56); enemy.baseRadius=Math.max(enemy.baseRadius,56); player.initShape(); enemy.initShape(); applyIslandType(player,'standard'); applyIslandType(enemy,'standard'); const diff = currentDifficulty(); player.maxPlanes=112; enemy.maxPlanes=112; player.planes=46; enemy.planes=Math.round(46 * diff.enemyBoost); player.productionRate=player.baseRadius/30; enemy.productionRate=(enemy.baseRadius/30) * diff.enemyBoost;
+
+    if (best.length < 5){
+      const fallback = [];
+      const left = Math.max(98, panelReservedWidth() + 18);
+      const right = width - 92;
+      const top = 130;
+      const bottom = height - 120;
+      const cx = (left + right) * 0.5;
+      const cy = (top + bottom) * 0.5;
+      const pts = [
+        [left, cy],
+        [right, cy],
+        [cx, top],
+        [cx, bottom],
+        [left + (right-left)*0.28, top + (bottom-top)*0.28],
+        [left + (right-left)*0.72, top + (bottom-top)*0.72],
+      ];
+      for (let i=0; i<pts.length; i++){
+        const radius = i < 2 ? 54 : (i < 4 ? 44 : 38);
+        const x = clamp(pts[i][0], radius + 16, width - radius - 16);
+        const y = clamp(pts[i][1], radius + safeTop, height - radius - safeBottom);
+        const type = (i < 2) ? 'standard' : ['factory','fortress','fuel','heavy'][i % 4];
+        fallback.push(new Island(x,y,radius,TEAM_NEUTRAL,type));
+      }
+      best = fallback;
+    }
+
+    islands = best;
+
+    let bestPair=[0,1,0];
+    for (let i=0;i<islands.length;i++){
+      for (let j=i+1;j<islands.length;j++){
+        const d=dist(islands[i].x,islands[i].y,islands[j].x,islands[j].y);
+        if (d>bestPair[2]) bestPair=[i,j,d];
+      }
+    }
+
+    const player=islands[bestPair[0]], enemy=islands[bestPair[1]];
+    player.owner=TEAM_PLAYER; enemy.owner=TEAM_ENEMY;
+    player.baseRadius=Math.max(player.baseRadius,56); enemy.baseRadius=Math.max(enemy.baseRadius,56);
+    player.initShape(); enemy.initShape();
+    applyIslandType(player,'standard'); applyIslandType(enemy,'standard');
+    player.maxPlanes=112; enemy.maxPlanes=112;
+    player.planes=46; enemy.planes=Math.round(46 * diff.enemyBoost);
+    player.productionRate=player.baseRadius/30; enemy.productionRate=(enemy.baseRadius/30) * diff.enemyBoost;
+
     let farEnemy=null, farPlayer=null, enemyScore=-Infinity, playerScore=-Infinity;
-    for (const island of islands){ if (island===player || island===enemy) continue; const es=dist(island.x,island.y,player.x,player.y)-dist(island.x,island.y,enemy.x,enemy.y)*0.25; const ps=dist(island.x,island.y,enemy.x,enemy.y)-dist(island.x,island.y,player.x,player.y)*0.25; if (es>enemyScore){enemyScore=es; farEnemy=island;} if (ps>playerScore){playerScore=ps; farPlayer=island;} }
+    for (const island of islands){
+      if (island===player || island===enemy) continue;
+      const es=dist(island.x,island.y,player.x,player.y)-dist(island.x,island.y,enemy.x,enemy.y)*0.25;
+      const ps=dist(island.x,island.y,enemy.x,enemy.y)-dist(island.x,island.y,player.x,player.y)*0.25;
+      if (es>enemyScore){enemyScore=es; farEnemy=island;}
+      if (ps>playerScore){playerScore=ps; farPlayer=island;}
+    }
     if (farEnemy && farEnemy.owner===TEAM_NEUTRAL){ farEnemy.owner=TEAM_ENEMY; farEnemy.planes=Math.max(14,Math.round(farEnemy.baseRadius*0.34)); }
     if (farPlayer && farPlayer.owner===TEAM_NEUTRAL){ farPlayer.owner=TEAM_PLAYER; farPlayer.planes=Math.max(14,Math.round(farPlayer.baseRadius*0.34)); }
+
     const neutralPool = islands.filter(i => i.owner === TEAM_NEUTRAL).sort(() => Math.random() - 0.5).slice(0, 3);
-    const pickupBag = ['energy','repair','fury']; neutralPool.forEach((island, idx) => { island.pickupType = pickupBag[idx % pickupBag.length]; island.pickupPulse = rand(0, Math.PI * 2); });
+    const pickupBag = ['energy','repair','fury'];
+    neutralPool.forEach((island, idx) => { island.pickupType = pickupBag[idx % pickupBag.length]; island.pickupPulse = rand(0, Math.PI * 2); });
   }
 
   function teamIslands(team){ return islands.filter(i=>i.owner===team); }
