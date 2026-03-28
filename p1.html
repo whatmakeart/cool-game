@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pacific Strike</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Prevent scrolling on mobile */
+            background-color: #064273; /* Deep ocean blue */
+            touch-action: none; /* Disable browser gestures like pinch-zoom */
+            font-family: 'Courier New', Courier, monospace;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            color: #e0f7fa;
+            pointer-events: none;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        h1 { margin: 0; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 2px;}
+        p { margin: 5px 0 0 0; font-size: 0.9rem; opacity: 0.8;}
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <h1>Pacific Strike</h1>
+        <p>Tap your island (Blue), then tap target.</p>
+        <p id="status"></p>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        // Game Constants
+        const TEAM_NEUTRAL = 0;
+        const TEAM_PLAYER = 1;
+        const TEAM_ENEMY = 2;
+
+        const COLORS = {
+            [TEAM_NEUTRAL]: { border: '#aaaaaa', fill: '#4E8752', glow: 'rgba(255,255,255,0.2)' },
+            [TEAM_PLAYER]:  { border: '#00ffff', fill: '#4E8752', glow: 'rgba(0, 255, 255, 0.4)' },
+            [TEAM_ENEMY]:   { border: '#ff3333', fill: '#4E8752', glow: 'rgba(255, 51, 51, 0.4)' },
+            oceanShallow: 'rgba(28, 163, 236, 0.3)',
+            sand: '#d4c098'
+        };
+
+        let islands = [];
+        let fleets = [];
+        let selectedIsland = null;
+        let lastTime = 0;
+
+        // Resize handler
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- Classes ---
+
+        class Island {
+            constructor(x, y, radius, owner) {
+                this.x = x;
+                this.y = y;
+                this.baseRadius = radius;
+                this.owner = owner;
+                
+                // Generative properties based on radius size
+                this.maxPlanes = Math.floor(radius * 1.5);
+                this.planes = owner === TEAM_NEUTRAL ? Math.floor(radius / 3) : 15;
+                this.productionRate = radius / 50; // planes per second
+
+                // Procedural coastline generation
+                this.vertices = [];
+                const points = 16;
+                for (let i = 0; i < points; i++) {
+                    const angle = (i / points) * Math.PI * 2;
+                    // Perturb radius by up to 25% for organic look
+                    const r = radius * (0.75 + Math.random() * 0.5); 
+                    this.vertices.push({ x: Math.cos(angle) * r, y: Math.sin(angle) * r });
+                }
+            }
+
+            update(dt) {
+                if (this.owner !== TEAM_NEUTRAL && this.planes < this.maxPlanes) {
+                    this.planes += this.productionRate * dt;
+                }
+            }
+
+            draw(ctx) {
+                // 1. Shallow water glow
+                ctx.fillStyle = COLORS.oceanShallow;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.baseRadius + 15, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 2. Ownership Glow Ring
+                ctx.shadowColor = COLORS[this.owner].border;
+                ctx.shadowBlur = 15;
+                ctx.strokeStyle = COLORS[this.owner].border;
+                ctx.lineWidth = this.owner === TEAM_NEUTRAL ? 2 : 4;
+                if (this === selectedIsland) {
+                    ctx.shadowBlur = 30;
+                    ctx.lineWidth = 6;
+                }
+
+                // 3. Draw generative island shape
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                // Sand layer
+                ctx.fillStyle = COLORS.sand;
+                ctx.beginPath();
+                this.vertices.forEach((v, i) => {
+                    if (i === 0) ctx.moveTo(v.x, v.y);
+                    else ctx.lineTo(v.x, v.y);
+                });
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke(); // Draw ownership border
+                ctx.shadowBlur = 0; // Reset shadow for inner terrain
+
+                // Inner vegetation layer (scaled down)
+                ctx.fillStyle = COLORS[this.owner].fill;
+                ctx.beginPath();
+                this.vertices.forEach((v, i) => {
+                    if (i === 0) ctx.moveTo(v.x * 0.7, v.y * 0.7);
+                    else ctx.lineTo(v.x * 0.7, v.y * 0.7);
+                });
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+
+                // 4. Text (Plane Count)
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 20px Courier New';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                // Add tiny black outline to text for readability
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 3;
+                ctx.strokeText(Math.floor(this.planes), this.x, this.y);
+                ctx.fillText(Math.floor(this.planes), this.x, this.y);
+            }
+        }
+
+        class Fleet {
+            constructor(source, target, count) {
+                this.x = source.x;
+                this.y = source.y;
+                this.target = target;
+                this.count = count;
+                this.owner = source.owner;
+                this.speed = 100; // pixels per second
+                
+                // Calculate trajectory
+                const dx = target.x - source.x;
+                const dy = target.y - source.y;
+                this.angle = Math.atan2(dy, dx);
+            }
+
+            update(dt) {
+                this.x += Math.cos(this.angle) * this.speed * dt;
+                this.y += Math.sin(this.angle) * this.speed * dt;
+
+                // Collision detection with target island
+                const dist = Math.hypot(this.target.x - this.x, this.target.y - this.y);
+                if (dist < this.target.baseRadius) {
+                    this.arrive();
+                    return true; // Mark for deletion
+                }
+                return false;
+            }
+
+            arrive() {
+                if (this.target.owner === this.owner) {
+                    // Reinforce
+                    this.target.planes += this.count;
+                } else {
+                    // Attack
+                    this.target.planes -= this.count;
+                    if (this.target.planes < 0) {
+                        // Conquer
+                        this.target.owner = this.owner;
+                        this.target.planes = Math.abs(this.target.planes);
+                    }
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                
+                // Vector graphic of a WWII-style propeller plane
+                ctx.fillStyle = COLORS[this.owner].border;
+                ctx.beginPath();
+                ctx.moveTo(12, 0);       // Nose
+                ctx.lineTo(-4, -10);     // Left wing tip
+                ctx.lineTo(-2, -2);      // Left wing base
+                ctx.lineTo(-8, -4);      // Left tail
+                ctx.lineTo(-10, 0);      // Tail center
+                ctx.lineTo(-8, 4);       // Right tail
+                ctx.lineTo(-2, 2);       // Right wing base
+                ctx.lineTo(-4, 10);      // Right wing tip
+                ctx.closePath();
+                ctx.fill();
+                
+                // Count text next to plane
+                ctx.rotate(-this.angle); // keep text upright
+                ctx.fillStyle = 'white';
+                ctx.font = '12px Courier New';
+                ctx.fillText(Math.floor(this.count), 0, -15);
+                ctx.restore();
+            }
+        }
+
+        // --- Initialization ---
+
+        function initMap() {
+            islands = [];
+            fleets = [];
+            
+            // Try to place islands without overlapping
+            const numIslands = Math.max(8, Math.floor((width * height) / 40000)); 
+            
+            for (let i = 0; i < numIslands; i++) {
+                let x, y, radius, valid;
+                let attempts = 0;
+                do {
+                    valid = true;
+                    radius = 30 + Math.random() * 40;
+                    x = radius + Math.random() * (width - radius * 2);
+                    y = radius + 60 + Math.random() * (height - radius * 2 - 60); // Account for UI
+
+                    for (let j = 0; j < islands.length; j++) {
+                        const dist = Math.hypot(islands[j].x - x, islands[j].y - y);
+                        if (dist < radius + islands[j].baseRadius + 40) { // Keep space for ships/ui
+                            valid = false;
+                            break;
+                        }
+                    }
+                    attempts++;
+                } while (!valid && attempts < 100);
+
+                if (valid) {
+                    islands.push(new Island(x, y, radius, TEAM_NEUTRAL));
+                }
+            }
+
+            // Assign starting islands
+            if (islands.length >= 2) {
+                // Find two islands furthest apart
+                let maxDist = 0;
+                let i1, i2;
+                for(let i=0; i<islands.length; i++){
+                    for(let j=i+1; j<islands.length; j++){
+                        let d = Math.hypot(islands[i].x - islands[j].x, islands[i].y - islands[j].y);
+                        if(d > maxDist){
+                            maxDist = d; i1 = islands[i]; i2 = islands[j];
+                        }
+                    }
+                }
+                i1.owner = TEAM_PLAYER;
+                i2.owner = TEAM_ENEMY;
+                // Give starters a nice boost
+                i1.baseRadius = i2.baseRadius = 60; 
+                i1.planes = i2.planes = 40;
+                i1.maxPlanes = i2.maxPlanes = 100;
+            }
+        }
+
+        // --- Core Mechanics ---
+
+        function handleInteraction(x, y) {
+            let clickedIsland = null;
+            
+            // Find if an island was clicked
+            for (let island of islands) {
+                if (Math.hypot(island.x - x, island.y - y) <= island.baseRadius) {
+                    clickedIsland = island;
+                    break;
+                }
+            }
+
+            if (selectedIsland) {
+                if (clickedIsland && clickedIsland !== selectedIsland) {
+                    // Send Fleet: 50% of planes
+                    const sendCount = Math.floor(selectedIsland.planes / 2);
+                    if (sendCount > 0) {
+                        selectedIsland.planes -= sendCount;
+                        fleets.push(new Fleet(selectedIsland, clickedIsland, sendCount));
+                    }
+                }
+                // Deselect after sending or clicking empty space
+                selectedIsland = null;
+            } else if (clickedIsland && clickedIsland.owner === TEAM_PLAYER) {
+                // Select own island
+                selectedIsland = clickedIsland;
+            }
+        }
+
+        function enemyAI() {
+            // Very simple AI: loop through enemy islands, occasionally send 50% fleet
+            islands.forEach(island => {
+                if (island.owner === TEAM_ENEMY && island.planes > 15) {
+                    if (Math.random() < 0.01) { // 1% chance per frame to take action
+                        // Target a random non-enemy island, preference for weaker ones
+                        let targets = islands.filter(i => i.owner !== TEAM_ENEMY);
+                        if(targets.length > 0) {
+                            targets.sort((a,b) => a.planes - b.planes);
+                            // 50% chance to attack weakest, 50% random
+                            let target = Math.random() > 0.5 ? targets[0] : targets[Math.floor(Math.random() * targets.length)];
+                            
+                            const sendCount = Math.floor(island.planes / 2);
+                            island.planes -= sendCount;
+                            fleets.push(new Fleet(island, target, sendCount));
+                        }
+                    }
+                }
+            });
+            
+            // Win/Loss check
+            const playerOwns = islands.filter(i => i.owner === TEAM_PLAYER).length;
+            const enemyOwns = islands.filter(i => i.owner === TEAM_ENEMY).length;
+            const statusTag = document.getElementById('status');
+            
+            if (playerOwns === 0 && fleets.filter(f => f.owner === TEAM_PLAYER).length === 0) {
+                statusTag.innerText = "DEFEAT! Refresh to restart.";
+                statusTag.style.color = "#ff3333";
+            } else if (enemyOwns === 0 && fleets.filter(f => f.owner === TEAM_ENEMY).length === 0) {
+                statusTag.innerText = "VICTORY! Refresh to restart.";
+                statusTag.style.color = "#00ffff";
+            }
+        }
+
+        // --- Input Listeners ---
+
+        // Touch for Mobile
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            handleInteraction(touch.clientX, touch.clientY);
+        }, { passive: false });
+
+        // Mouse for Desktop
+        canvas.addEventListener('mousedown', (e) => {
+            handleInteraction(e.clientX, e.clientY);
+        });
+
+        // --- Game Loop ---
+
+        function loop(timestamp) {
+            const dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            // Clear Screen
+            ctx.clearRect(0, 0, width, height);
+
+            if (dt < 0.1) { // Prevent massive jumps if tab is backgrounded
+                // Update
+                islands.forEach(i => i.update(dt));
+                enemyAI();
+                
+                // Iterate backwards to safely remove elements
+                for (let i = fleets.length - 1; i >= 0; i--) {
+                    if (fleets[i].update(dt)) {
+                        fleets.splice(i, 1);
+                    }
+                }
+            }
+
+            // Draw
+            islands.forEach(i => i.draw(ctx));
+            fleets.forEach(f => f.draw(ctx));
+
+            requestAnimationFrame(loop);
+        }
+
+        // Start
+        initMap();
+        requestAnimationFrame((timestamp) => {
+            lastTime = timestamp;
+            loop(timestamp);
+        });
+
+    </script>
+</body>
+</html>
