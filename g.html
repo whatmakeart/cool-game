@@ -3,85 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Color Matter Pop</title>
+    <title>Color Matter Pop v2</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
+        :root {
+            --bg-color: #020617;
+            --danger-color: rgba(239, 68, 68, 0.2);
+        }
+
         body {
-            margin: 0;
-            padding: 0;
-            background-color: #0f172a;
+            margin: 0; padding: 0;
+            background-color: var(--bg-color);
             overflow: hidden;
-            touch-action: none; /* Prevents mobile scrolling/zooming */
+            touch-action: none;
             font-family: system-ui, -apple-system, sans-serif;
             color: white;
+            user-select: none;
         }
 
         #game-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
+            position: absolute; top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            transition: transform 0.05s ease-out; /* For screen shake */
         }
 
-        /* CSS-based graphics for the orbs */
+        /* Danger Line */
+        #danger-zone {
+            position: absolute;
+            bottom: 100px; left: 0; width: 100%; height: 5px;
+            background: linear-gradient(90deg, transparent, red, transparent);
+            opacity: 0.5;
+            box-shadow: 0 0 10px red;
+            z-index: 1;
+        }
+
         .orb {
             position: absolute;
             border-radius: 50%;
-            top: 0;
-            left: 0;
-            transform-origin: center;
-            box-shadow: inset -5px -5px 15px rgba(0,0,0,0.4), 0 0 10px rgba(255,255,255,0.2);
-            transition: transform 0.05s linear;
+            top: 0; left: 0;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 2rem;
+            box-shadow: inset -5px -5px 15px rgba(0,0,0,0.5), inset 2px 2px 8px rgba(255,255,255,0.4), 0 0 10px rgba(0,0,0,0.5);
+            transition: transform 0.03s linear;
+            z-index: 5;
         }
 
-        /* The Cannon built with SVG */
-        #cannon-container {
+        .pop-anim {
+            animation: pop 0.2s ease-out forwards;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.8; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        .floating-text {
             position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 80px;
-            height: 80px;
-            pointer-events: none;
-            z-index: 10;
+            font-weight: bold; font-size: 1.5rem;
+            color: white; text-shadow: 0 0 5px black;
+            pointer-events: none; z-index: 20;
+            animation: floatUp 1s ease-out forwards;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-50px) scale(1.5); opacity: 0; }
         }
 
         #ui-layer {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            pointer-events: none;
-            z-index: 10;
+            position: absolute; top: 20px; left: 20px;
+            pointer-events: none; z-index: 10;
         }
 
-        .hidden { display: none; }
+        #score-display { font-size: 2rem; font-weight: 900; color: #fbbf24; text-shadow: 0 0 10px rgba(251, 191, 36, 0.5); margin: 0; }
+
+        #start-screen {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(2, 6, 23, 0.85); backdrop-filter: blur(5px);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 50; text-align: center;
+        }
+        
+        button {
+            padding: 15px 40px; font-size: 1.5rem; font-weight: bold;
+            background: #3b82f6; color: white; border: none; border-radius: 50px;
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.4);
+            cursor: pointer; margin-top: 20px;
+        }
+
+        #cannon {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 80px; height: 80px; z-index: 10; pointer-events: none;
+        }
     </style>
 </head>
 <body>
 
-    <div id="ui-layer">
-        <h2>Color Matter Pop</h2>
-        <p>Tap to shoot. Match colors to clear them!</p>
+    <div id="start-screen">
+        <h1 style="font-size: 3rem; margin-bottom: 0; background: -webkit-linear-gradient(#fbbf24, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">COLOR POP v2</h1>
+        <p style="color: #94a3b8; font-size: 1.2rem;">Match colors. Survive the physics.</p>
+        <button id="start-btn">TAP TO PLAY</button>
     </div>
 
-    <div id="game-container"></div>
+    <div id="ui-layer">
+        <p id="score-display">0</p>
+    </div>
 
-    <div id="cannon-container">
-        <svg viewBox="0 0 100 100" width="100%" height="100%">
-            <circle cx="50" cy="80" r="20" fill="#334155" />
-            <circle id="next-color-indicator" cx="50" cy="80" r="10" fill="#fff" />
-            <path d="M 40 80 L 45 20 L 55 20 L 60 80 Z" fill="#475569" />
+    <div id="game-container">
+        <div id="danger-zone"></div>
+        <svg id="cannon" viewBox="0 0 100 100">
+            <circle cx="50" cy="80" r="20" fill="#1e293b" />
+            <circle id="next-color-indicator" cx="50" cy="80" r="12" fill="#fff" />
+            <path d="M 35 80 L 40 20 L 60 20 L 65 80 Z" fill="#334155" />
         </svg>
     </div>
 
     <script>
-        // --- Audio Synthesizer (No external files needed) ---
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        // --- Audio Context (Initialized on first tap) ---
         let audioCtx;
-
         function initAudio() {
-            if (!audioCtx) audioCtx = new AudioContext();
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
@@ -89,176 +131,281 @@
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-
+            osc.connect(gain); gain.connect(audioCtx.destination);
             const now = audioCtx.currentTime;
+
             if (type === 'shoot') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(600, now);
-                osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
-                gain.gain.setValueAtTime(0.3, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-                osc.start(now);
-                osc.stop(now + 0.15);
+                osc.type = 'square'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
             } else if (type === 'pop') {
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(400, now);
-                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
-                gain.gain.setValueAtTime(0.5, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                osc.start(now);
-                osc.stop(now + 0.1);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(1500, now + 0.1);
+                gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'bomb') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.exponentialRampToValueAtTime(40, now + 0.3);
+                gain.gain.setValueAtTime(0.5, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now); osc.stop(now + 0.3);
+            } else if (type === 'boss_hit') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(150, now); osc.frequency.linearRampToValueAtTime(200, now + 0.1);
+                gain.gain.setValueAtTime(0.4, now); gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
             }
         }
 
-        // --- Game Logic & Physics ---
-        const colors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7'];
+        // --- Setup & Globals ---
+        const Engine = Matter.Engine, Render = Matter.Render, World = Matter.World, 
+              Bodies = Matter.Bodies, Body = Matter.Body, Events = Matter.Events, 
+              Composite = Matter.Composite, Query = Matter.Query;
+
         const container = document.getElementById('game-container');
-        const nextColorIndicator = document.getElementById('next-color-indicator');
+        const scoreEl = document.getElementById('score-display');
+        const nextColorInd = document.getElementById('next-color-indicator');
         
+        const colors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7'];
         let width = window.innerWidth;
         let height = window.innerHeight;
-        let nextColor = colors[Math.floor(Math.random() * colors.length)];
-        nextColorIndicator.setAttribute('fill', nextColor);
+        let score = 0;
+        let shotsFired = 0;
+        let balls = [];
+        let isGameOver = false;
 
-        // Matter.js Aliases
-        const Engine = Matter.Engine,
-              Render = Matter.Render,
-              World = Matter.World,
-              Bodies = Matter.Bodies,
-              Body = Matter.Body,
-              Events = Matter.Events,
-              Composite = Matter.Composite;
-
-        // Create Engine with zero gravity so things float around
         const engine = Engine.create();
-        engine.world.gravity.y = 0; 
-        engine.world.gravity.x = 0;
+        engine.world.gravity.y = 0.8; // Strong gravity pulling down
 
-        let balls = []; // Keep track of physics bodies and their DOM elements
-
-        // Create Walls
-        const wallOptions = { isStatic: true, render: { visible: false } };
-        const ground = Bodies.rectangle(width / 2, height + 25, width, 50, wallOptions);
-        const leftWall = Bodies.rectangle(-25, height / 2, 50, height, wallOptions);
-        const rightWall = Bodies.rectangle(width + 25, height / 2, 50, height, wallOptions);
-        const ceiling = Bodies.rectangle(width / 2, -25, width, 50, wallOptions);
+        // Boundaries
+        const wallOpt = { isStatic: true, friction: 0, restitution: 0.5, render: { visible: false } };
+        const ground = Bodies.rectangle(width/2, height + 50, width, 100, wallOpt); // Safety net
+        const leftWall = Bodies.rectangle(-25, height/2, 50, height * 2, wallOpt);
+        const rightWall = Bodies.rectangle(width + 25, height/2, 50, height * 2, wallOpt);
+        const ceiling = Bodies.rectangle(width/2, -50, width, 100, wallOpt);
         World.add(engine.world, [ground, leftWall, rightWall, ceiling]);
 
-        function createBall(x, y, radius, color, isProjectile = false) {
-            // Create DOM Element
+        // Powerup Logic
+        let nextType = 'normal';
+        let nextColor = colors[0];
+
+        function rollNextProjectile() {
+            shotsFired++;
+            if (shotsFired % 15 === 0) spawnBoss();
+
+            const rand = Math.random();
+            if (rand < 0.05) {
+                nextType = 'bomb';
+                nextColorInd.setAttribute('fill', '#111');
+            } else if (rand < 0.15) {
+                nextType = 'rainbow';
+                nextColorInd.setAttribute('fill', 'url(#rainbow-grad)'); // Fallback to white visually if no SVG grad
+                nextColorInd.style.fill = 'white';
+            } else {
+                nextType = 'normal';
+                nextColor = colors[Math.floor(Math.random() * colors.length)];
+                nextColorInd.style.fill = '';
+                nextColorInd.setAttribute('fill', nextColor);
+            }
+        }
+
+        function createBall(x, y, radius, type, color, isProjectile = false) {
             const el = document.createElement('div');
             el.className = 'orb';
             el.style.width = (radius * 2) + 'px';
             el.style.height = (radius * 2) + 'px';
-            el.style.background = `radial-gradient(circle at 30% 30%, ${color}, #000)`;
-            container.appendChild(el);
+            
+            let health = 1;
 
-            // Create Physics Body
-            const body = Bodies.circle(x, y, radius, {
-                restitution: 0.9, // Bouncy
-                frictionAir: 0.01, // Slight drag
-                friction: 0.001,
-                density: 0.05
-            });
-
-            // If it's starting as a target, give it a random gentle nudge
-            if (!isProjectile) {
-                Body.setVelocity(body, { 
-                    x: (Math.random() - 0.5) * 5, 
-                    y: (Math.random() - 0.5) * 5 
-                });
+            if (type === 'normal') {
+                el.style.background = `radial-gradient(circle at 30% 30%, ${color}, #000)`;
+            } else if (type === 'bomb') {
+                el.style.background = `radial-gradient(circle at 30% 30%, #333, #000)`;
+                el.innerHTML = '💣';
+            } else if (type === 'rainbow') {
+                el.style.background = `conic-gradient(red, yellow, lime, aqua, blue, magenta, red)`;
+                el.style.boxShadow = `0 0 15px rgba(255,255,255,0.8)`;
+            } else if (type === 'boss') {
+                el.style.background = `radial-gradient(circle at 30% 30%, #f472b6, #db2777)`;
+                el.style.boxShadow = `0 0 30px #db2777`;
+                el.innerHTML = '🦩'; // The Mega Flamingo Boss
+                health = 5;
             }
 
-            World.add(engine.world, body);
+            container.appendChild(el);
 
-            const ballObj = { body, el, color, radius, isProjectile };
+            const body = Bodies.circle(x, y, radius, {
+                restitution: 0.6,
+                friction: 0.05,
+                density: type === 'boss' ? 0.5 : 0.05,
+                frictionAir: 0.02
+            });
+
+            World.add(engine.world, body);
+            const ballObj = { body, el, color, type, isProjectile, radius, health };
             balls.push(ballObj);
             return ballObj;
         }
 
-        function removeBall(ballObj) {
-            World.remove(engine.world, ballObj.body);
-            if (ballObj.el.parentNode) {
-                ballObj.el.parentNode.removeChild(ballObj.el);
+        function spawnBoss() {
+            createBall(width / 2, -100, 60, 'boss', '#f472b6');
+            screenShake(10);
+        }
+
+        function removeBall(ball, withAnim = true) {
+            if (ball._isRemoving) return;
+            ball._isRemoving = true;
+            
+            World.remove(engine.world, ball.body);
+            balls = balls.filter(b => b !== ball);
+
+            if (withAnim) {
+                ball.el.classList.add('pop-anim');
+                setTimeout(() => { if (ball.el.parentNode) ball.el.parentNode.removeChild(ball.el); }, 200);
+            } else {
+                if (ball.el.parentNode) ball.el.parentNode.removeChild(ball.el);
             }
-            balls = balls.filter(b => b !== ballObj);
         }
 
-        // Spawn initial cluster of balls
-        for (let i = 0; i < 15; i++) {
-            const rColor = colors[Math.floor(Math.random() * colors.length)];
-            createBall(width/2 + (Math.random()-0.5)*100, height/4 + (Math.random()-0.5)*100, 20, rColor);
+        function showFloatingText(x, y, text, color) {
+            const el = document.createElement('div');
+            el.className = 'floating-text';
+            el.style.left = `${x}px`; el.style.top = `${y}px`;
+            el.style.color = color;
+            el.innerText = text;
+            container.appendChild(el);
+            setTimeout(() => el.remove(), 1000);
         }
 
-        // Handle Shooting
+        function screenShake(intensity = 5) {
+            container.style.transform = `translate(${(Math.random()-0.5)*intensity}px, ${(Math.random()-0.5)*intensity}px)`;
+            setTimeout(() => { container.style.transform = 'translate(0,0)'; }, 50);
+        }
+
+        // --- Interaction & Physics Loop ---
+        document.getElementById('start-btn').addEventListener('click', () => {
+            initAudio();
+            document.getElementById('start-screen').style.display = 'none';
+            rollNextProjectile();
+            // Drop initial wave
+            for(let i=0; i<8; i++) {
+                setTimeout(() => {
+                    createBall(Math.random() * width, -50, 25, 'normal', colors[Math.floor(Math.random() * colors.length)]);
+                }, i * 150);
+            }
+        });
+
         document.body.addEventListener('pointerdown', (e) => {
-            initAudio(); // Required to unlock audio context on first interaction
-            playSound('shoot');
+            if (isGameOver || e.target.tagName === 'BUTTON') return;
+            initAudio(); playSound('shoot');
 
             const startX = width / 2;
             const startY = height - 40;
-            const targetX = e.clientX;
-            const targetY = e.clientY;
+            const angle = Math.atan2(e.clientY - startY, e.clientX - startX);
+            
+            const projectile = createBall(startX, startY - 40, 25, nextType, nextColor, true);
+            const force = 45; 
+            Body.setVelocity(projectile.body, { x: Math.cos(angle) * force, y: Math.sin(angle) * force });
 
-            // Calculate angle and velocity
-            const angle = Math.atan2(targetY - startY, targetX - startX);
-            const forceMagnitude = 40; 
-            const velocityX = Math.cos(angle) * forceMagnitude;
-            const velocityY = Math.sin(angle) * forceMagnitude;
-
-            // Fire the ball
-            const projectile = createBall(startX, startY - 40, 20, nextColor, true);
-            Body.setVelocity(projectile.body, { x: velocityX, y: velocityY });
-
-            // Set up next color
-            nextColor = colors[Math.floor(Math.random() * colors.length)];
-            nextColorIndicator.setAttribute('fill', nextColor);
+            rollNextProjectile();
         });
 
-        // Collision Logic
         Events.on(engine, 'collisionStart', function(event) {
-            const pairs = event.pairs;
             let ballsToRemove = new Set();
+            const pairs = event.pairs;
 
-            for (let i = 0; i < pairs.length; i++) {
-                const bodyA = pairs[i].bodyA;
-                const bodyB = pairs[i].bodyB;
+            pairs.forEach(pair => {
+                const bA = balls.find(b => b.body === pair.bodyA);
+                const bB = balls.find(b => b.body === pair.bodyB);
 
-                const ballA = balls.find(b => b.body === bodyA);
-                const ballB = balls.find(b => b.body === bodyB);
+                if (!bA || !bB) return;
 
-                if (ballA && ballB) {
-                    // Check if one was a projectile colliding with a target
-                    if ((ballA.isProjectile || ballB.isProjectile)) {
-                        
-                        if (ballA.color === ballB.color) {
-                            // Match! Mark for removal
-                            ballsToRemove.add(ballA);
-                            ballsToRemove.add(ballB);
-                            playSound('pop');
-                        } else {
-                            // No match. The projectile becomes a normal target ball
-                            ballA.isProjectile = false;
-                            ballB.isProjectile = false;
+                // Projectile hits logic
+                if (bA.isProjectile || bB.isProjectile) {
+                    const proj = bA.isProjectile ? bA : bB;
+                    const target = bA.isProjectile ? bB : bA;
+                    
+                    proj.isProjectile = false; // It has struck
+
+                    if (proj.type === 'bomb' || target.type === 'bomb') {
+                        // Explosion radius
+                        playSound('bomb'); screenShake(15);
+                        const center = proj.body.position;
+                        balls.forEach(b => {
+                            const dist = Math.hypot(b.body.position.x - center.x, b.body.position.y - center.y);
+                            if (dist < 120) ballsToRemove.add(b);
+                        });
+                        showFloatingText(center.x, center.y, "BOOM!", "#ff4444");
+
+                    } else if (target.type === 'boss' || proj.type === 'boss') {
+                        // Boss Hit
+                        const boss = target.type === 'boss' ? target : proj;
+                        const hitter = target.type === 'boss' ? proj : target;
+                        boss.health--;
+                        playSound('boss_hit'); screenShake(5);
+                        ballsToRemove.add(hitter); // Consume the orb
+
+                        boss.el.style.transform = `scale(0.9)`; // Flinch
+                        setTimeout(() => boss.el.style.transform = `scale(1)`, 100);
+
+                        if (boss.health <= 0) {
+                            ballsToRemove.add(boss);
+                            score += 500;
+                            showFloatingText(boss.body.position.x, boss.body.position.y, "+500", "#f472b6");
+                            playSound('bomb');
                         }
+
+                    } else if (proj.type === 'rainbow' || proj.color === target.color) {
+                        // Match or Rainbow
+                        playSound('pop');
+                        ballsToRemove.add(proj);
+                        ballsToRemove.add(target);
+                        score += 20;
+                        
+                        // Chain Reaction: Find nearby same-color orbs
+                        const matchColor = target.color;
+                        balls.forEach(b => {
+                            if (b !== proj && b !== target && b.type === 'normal' && b.color === matchColor) {
+                                const dist = Math.hypot(b.body.position.x - target.body.position.x, b.body.position.y - target.body.position.y);
+                                if (dist < 60) {
+                                    ballsToRemove.add(b);
+                                    score += 10;
+                                }
+                            }
+                        });
                     }
                 }
-            }
+            });
 
-            // Remove matched balls safely outside the physics loop step
-            ballsToRemove.forEach(ball => removeBall(ball));
+            ballsToRemove.forEach(b => {
+                removeBall(b);
+                scoreEl.innerText = score;
+            });
         });
 
-        // Game Loop to sync Physics Engine to DOM CSS
         function update() {
             Engine.update(engine, 1000 / 60);
 
             balls.forEach(ball => {
                 const { x, y } = ball.body.position;
-                // Translate the top-left of the DOM element to the physics body center
-                ball.el.style.transform = `translate(${x - ball.radius}px, ${y - ball.radius}px)`;
+                // Game Over check if resting at bottom
+                if (y > height - 120 && ball.body.velocity.y > -0.1 && ball.body.velocity.y < 0.1 && !ball.isProjectile) {
+                    // It's settling in the danger zone
+                    if(!isGameOver) {
+                        isGameOver = true;
+                        document.getElementById('start-screen').style.display = 'flex';
+                        document.querySelector('#start-screen h1').innerText = "GAME OVER";
+                        document.querySelector('#start-screen p').innerText = `Final Score: ${score}`;
+                        document.getElementById('start-btn').innerText = "TAP TO RESTART";
+                        document.getElementById('start-btn').onclick = () => location.reload();
+                    }
+                }
+
+                // Sync DOM
+                if (ball.type !== 'boss') {
+                    ball.el.style.left = `${x - ball.radius}px`;
+                    ball.el.style.top = `${y - ball.radius}px`;
+                } else {
+                    // Boss needs transform for flinch animation
+                    ball.el.style.left = `${x - ball.radius}px`;
+                    ball.el.style.top = `${y - ball.radius}px`;
+                }
             });
 
             requestAnimationFrame(update);
@@ -266,15 +413,12 @@
 
         update();
 
-        // Handle Window Resize dynamically
         window.addEventListener('resize', () => {
-            width = window.innerWidth;
-            height = window.innerHeight;
-            
-            // Move walls
-            Body.setPosition(ground, { x: width / 2, y: height + 25 });
-            Body.setPosition(rightWall, { x: width + 25, y: height / 2 });
-            Body.setPosition(ceiling, { x: width / 2, y: -25 });
+            width = window.innerWidth; height = window.innerHeight;
+            Body.setPosition(ground, { x: width/2, y: height + 50 });
+            Body.setPosition(rightWall, { x: width + 25, y: height/2 });
+            Body.setPosition(ceiling, { x: width/2, y: -50 });
+            document.getElementById('danger-zone').style.bottom = '100px';
         });
 
     </script>
