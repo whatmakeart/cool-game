@@ -1,13 +1,92 @@
-<a href="https://whatmakeart.com/cool-game/p1.html">Island a defense V1</a>
-<br>
-<a href="https://whatmakeart.com/cool-game/p2.html">Island a defense V2</a>
-<br>
-<a href="https://whatmakeart.com/cool-game/p3.html">Island a defense V3</a>
-<br>
-<a href="https://whatmakeart.com/cool-game/p4.html">Island a defense V4</a>
-<br>
-<a href="https://whatmakeart.com/cool-game/p5.html">Island a defense V5</a>
-<br>
-<a href="https://whatmakeart.com/cool-game/p6.html">Island a defense V6</a>
-<br><a href="https://whatmakeart.com/cool-game/p7.html">Island a defense V7</a>
-<br>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Selection Menu</title>
+<style>
+  /* Base reset and layout */
+  body {
+    background-color: #1a1a2e;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+  }
+
+  /* Menu container */
+  .game-menu {
+    background-color: #16213e;
+    width: 100%;
+    max-width: 400px;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Menu Header */
+  .game-menu h2 {
+    color: #e94560;
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 24px;
+    font-size: 24px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+
+  /* Button styles */
+  .game-btn {
+    display: block;
+    background-color: #0f3460;
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    padding: 18px;
+    margin-bottom: 16px;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Remove margin from the last button */
+  .game-btn:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Hover and Active (Tap) states for mobile responsiveness */
+  .game-btn:hover {
+    background-color: #1a4b8c;
+    transform: translateY(-2px);
+  }
+
+  .game-btn:active {
+    background-color: #e94560;
+    border-color: #e94560;
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+</style>
+</head>
+<body>
+
+  <div class="game-menu">
+    <h2>Select Version</h2>
+    
+    <a href="https://whatmakeart.com/cool-game/p1.html" class="game-btn">Island Defense V1</a>
+    <a href="https://whatmakeart.com/cool-game/p2.html" class="game-btn">Island Defense V2</a>
+    <a href="https://whatmakeart.com/cool-game/p3.html" class="game-btn">Island Defense V3</a>
+    <a href="https://whatmakeart.com/cool-game/p4.html" class="game-btn">Island Defense V4</a>
+    <a href="https://whatmakeart.com/cool-game/p5.html" class="game-btn">Island Defense V5</a>
+    <a href="https://whatmakeart.com/cool-game/p6.html" class="game-btn">Island Defense V6</a>
+    <a href="https://whatmakeart.com/cool-game/p7.html" class="game-btn">Island Defense V7</a>
+  </div>
+
+</body>
+</html>
