@@ -39,7 +39,7 @@ button{
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 18px;}
 .tip{border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);padding:12px;font-size:14px;line-height:1.35;}
 .primaryBtn{background:linear-gradient(180deg,#82fbff,#2de4ff);color:#04131d;box-shadow:0 12px 30px rgba(45,228,255,.34);}
-.primaryBtn:active{transform:translateY(1px) scale(.995);}
+.primaryBtn:active{transform:translateY(1px) scale(.995);} 
 
 #sideWrap{
   position:absolute;left:0;top:0;bottom:0;z-index:12;pointer-events:none;
@@ -60,14 +60,14 @@ button{
   transition:left .26s ease, transform .2s ease;
 }
 #sideWrap.collapsed #panelHandle{left:0;}
-#panelHandle:active{transform:scale(.98);}
+#panelHandle:active{transform:scale(.98);} 
 .sectionTitle{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:rgba(234,247,255,.62);margin:10px 0 6px;}
 .card{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);border-radius:16px;padding:10px 11px;}
 #titleCard h2{margin:0;font-size:21px;line-height:1.05;letter-spacing:.08em;text-transform:uppercase;}
 #titleCard .sub{font-size:13px;color:rgba(234,247,255,.76);margin-top:6px;}
 .stat{font-size:13px;margin:4px 0;display:flex;justify-content:space-between;gap:10px;align-items:center;}
 .pill{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:800;}
-.you{background:rgba(89,239,255,.18);color:var(--cyan);} .ai{background:rgba(255,102,118,.18);color:var(--red);}
+.you{background:rgba(89,239,255,.18);color:var(--cyan);} .ai{background:rgba(255,102,118,.18);color:var(--red);} 
 .msgBar{margin-top:10px;font-size:13px;line-height:1.35;padding:9px 10px;border-radius:14px;background:rgba(0,0,0,.16);border:1px solid rgba(255,255,255,.08);}
 .legendLine{font-size:13px;line-height:1.34;margin:4px 0;color:rgba(234,247,255,.88);} .legendLine small{opacity:.72;}
 #floatingButtons{
@@ -78,8 +78,8 @@ button{
 .hidden{display:none!important;}
 @media (max-width:640px){
   .grid{grid-template-columns:1fr;}
-  #sidePanel{width:min(290px,78vw);}
-  #panelHandle{left:calc(min(290px,78vw) + 8px);}
+  #sidePanel{width:min(290px,78vw);} 
+  #panelHandle{left:calc(min(290px,78vw) + 8px);} 
 }
 </style>
 </head>
@@ -325,6 +325,7 @@ button{
       this.planes = owner === TEAM_NEUTRAL ? Math.round(radius * rand(0.18,0.34)) : Math.round(radius * 0.55 + 12);
       this.pulse = rand(0, Math.PI * 2);
       this.capturePulse = 0; this.warningPulse = 0; this.hitShake = 0; this.hitPhase = rand(0, Math.PI * 2);
+      this.runwayAngle = rand(-Math.PI, Math.PI);
       this.harborAngle = rand(-Math.PI, Math.PI);
       this.textureDots = Array.from({length: Math.round(radius * 0.6)}, () => { const a = rand(0,Math.PI*2), r = rand(0,radius*0.56); return {x:Math.cos(a)*r,y:Math.sin(a)*r,s:rand(1.2,3.4),t:Math.random()}; });
       this.coast = []; this.inner = []; this.reef = []; this.initShape();
@@ -580,19 +581,22 @@ button{
   function applyIslandType(island,type){ island.type=type; island.productionRate=island.prodBase*ISLAND_TYPES[type].prod; island.defense=ISLAND_TYPES[type].defense; island.speedMul=ISLAND_TYPES[type].speed; island.heavyBias=ISLAND_TYPES[type].heavyBias; island.maxPlanes=Math.round(island.baseRadius*1.84*ISLAND_TYPES[type].value); }
 
   function invalidSpawnZone(x,y,r){
-    const leftReserved = panelReservedWidth() + r + 18;
-    if (x < leftReserved) return true;
-    const bottomButtonW = 190, bottomButtonH = 168;
-    if (x > width - bottomButtonW - r && y > height - bottomButtonH - r) return true;
+    const buttonPad = 16;
+    const buttonZoneW = 210;
+    const buttonZoneH = 176;
+    if (x > width - buttonZoneW - r - buttonPad && y > height - buttonZoneH - r - buttonPad) return true;
     return false;
   }
 
   function buildMap(){
     islands=[]; squadrons=[]; bombs=[]; particles=[]; ripples=[]; decals=[];
-    const safeTop=72, safeBottom=46, count=clamp(Math.floor((width*height)/42000),9,17);
+    const safeTop=72, safeBottom=46;
+    const reservedArea = 210 * 176;
+    const usableArea = Math.max(1, width * height - reservedArea);
+    let count = clamp(Math.floor(usableArea / 52000), 7, 13);
     for (let i=0;i<count;i++){
       let placed=false;
-      for (let a=0;a<220 && !placed;a++){
+      for (let a=0;a<420 && !placed;a++){
         const radius=rand(28,54); const x=rand(radius+16,width-radius-16); const y=rand(radius+safeTop,height-radius-safeBottom);
         if (invalidSpawnZone(x,y,radius)) continue;
         let ok=true; for (const other of islands){ if (dist(x,y,other.x,other.y) < radius + other.baseRadius + 42){ ok=false; break; } }
@@ -600,7 +604,28 @@ button{
         const bag=['standard','standard','standard','factory','fortress','fuel','heavy']; const type=(i<2||i>count-3)?'standard':bag[Math.floor(Math.random()*bag.length)]; islands.push(new Island(x,y,radius,TEAM_NEUTRAL,type)); placed=true;
       }
     }
-    if (islands.length < 6){ buildMap(); return; }
+    if (islands.length < 6){
+      // Fallback for narrow mobile screens: use fewer islands and looser packing.
+      islands=[];
+      count = 6;
+      for (let i=0;i<count;i++){
+        let placed=false;
+        for (let a=0;a<520 && !placed;a++){
+          const radius=rand(28,50);
+          const x=rand(radius+16,width-radius-16);
+          const y=rand(radius+safeTop,height-radius-safeBottom);
+          if (invalidSpawnZone(x,y,radius)) continue;
+          let ok=true;
+          for (const other of islands){ if (dist(x,y,other.x,other.y) < radius + other.baseRadius + 28){ ok=false; break; } }
+          if (!ok) continue;
+          const bag=['standard','standard','factory','fortress','fuel','heavy'];
+          const type=(i<2||i>count-3)?'standard':bag[Math.floor(Math.random()*bag.length)];
+          islands.push(new Island(x,y,radius,TEAM_NEUTRAL,type));
+          placed=true;
+        }
+      }
+      if (islands.length < 4) return;
+    }
     let best=[0,1,0]; for (let i=0;i<islands.length;i++){ for (let j=i+1;j<islands.length;j++){ const d=dist(islands[i].x,islands[i].y,islands[j].x,islands[j].y); if (d>best[2]) best=[i,j,d]; }}
     const player=islands[best[0]], enemy=islands[best[1]];
     player.owner=TEAM_PLAYER; enemy.owner=TEAM_ENEMY; player.baseRadius=Math.max(player.baseRadius,56); enemy.baseRadius=Math.max(enemy.baseRadius,56); player.initShape(); enemy.initShape(); applyIslandType(player,'standard'); applyIslandType(enemy,'standard'); player.maxPlanes=112; enemy.maxPlanes=112; player.planes=46; enemy.planes=46; player.productionRate=player.baseRadius/30; enemy.productionRate=enemy.baseRadius/30;
