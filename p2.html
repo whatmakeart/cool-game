@@ -3,42 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pacific Strike: Swarm & Sound</title>
+    <title>Pacific Strike: Advanced</title>
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
-            background-color: #064273; touch-action: none;
+            background-color: #042e54; /* Darker naval blue */
+            touch-action: none; /* Prevent swipe-to-refresh */
             font-family: 'Courier New', Courier, monospace; user-select: none;
+            -webkit-user-select: none;
         }
         canvas { display: block; }
         #ui-layer {
             position: absolute; top: 15px; left: 15px; color: #e0f7fa;
             pointer-events: none; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 5;
         }
         h1 { margin: 0; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 2px;}
         p { margin: 5px 0 0 0; font-size: 0.9rem; opacity: 0.8;}
+        
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); color: white; display: flex;
-            align-items: center; justify-content: center; font-size: 1.5rem; z-index: 10;
+            background: rgba(0, 15, 30, 0.85); color: #00ffff; display: flex;
+            flex-direction: column; align-items: center; justify-content: center; 
+            font-size: 1.5rem; z-index: 10; cursor: pointer; text-align: center;
         }
+        #overlay-subtext { font-size: 1rem; color: #aaaaaa; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <div id="overlay">Tap to Start (Enables Audio)</div>
+    <div id="overlay">
+        <div id="overlay-title">TAP TO START</div>
+        <div id="overlay-subtext">Audio requires interaction</div>
+    </div>
+    
     <div id="ui-layer">
         <h1>Pacific Strike</h1>
-        <p>Tap your island (Blue), then target.</p>
-        <p id="status"></p>
+        <p>Tap Blue, tap Target. Tap water to cancel.</p>
     </div>
+    
     <canvas id="gameCanvas"></canvas>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const overlay = document.getElementById('overlay');
+        const overlayTitle = document.getElementById('overlay-title');
+        
         let width, height;
         let lastTime = 0;
         let gameActive = false;
+        let gridOffset = 0;
 
         // --- Generative Audio Engine ---
         let audioCtx;
@@ -50,23 +64,22 @@
         }
 
         function playSound(type) {
-            if(!audioCtx) return;
+            if(!audioCtx || audioCtx.state !== 'running') return;
             const t = audioCtx.currentTime;
             
             if (type === 'launch') {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.type = 'triangle';
-                osc.frequency.setValueAtTime(300, t);
-                osc.frequency.exponentialRampToValueAtTime(150, t + 0.2);
-                gain.gain.setValueAtTime(0.1, t);
-                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+                osc.frequency.setValueAtTime(400, t);
+                osc.frequency.exponentialRampToValueAtTime(100, t + 0.15);
+                gain.gain.setValueAtTime(0.08, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
                 osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(t); osc.stop(t + 0.2);
+                osc.start(t); osc.stop(t + 0.15);
             } 
             else if (type === 'explosion') {
-                // Generative white noise explosion
-                const bufferSize = audioCtx.sampleRate * 0.5; // 0.5 seconds
+                const bufferSize = audioCtx.sampleRate * 0.4;
                 const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
                 const data = buffer.getChannelData(0);
                 for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
@@ -74,15 +87,14 @@
                 const noise = audioCtx.createBufferSource();
                 noise.buffer = buffer;
                 
-                // Filter to make it sound like a deep boom
                 const filter = audioCtx.createBiquadFilter();
                 filter.type = 'lowpass';
-                filter.frequency.setValueAtTime(800, t);
-                filter.frequency.exponentialRampToValueAtTime(100, t + 0.5);
+                filter.frequency.setValueAtTime(600, t);
+                filter.frequency.exponentialRampToValueAtTime(50, t + 0.4);
 
                 const gain = audioCtx.createGain();
-                gain.gain.setValueAtTime(0.3, t);
-                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+                gain.gain.setValueAtTime(0.2, t);
+                gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
                 
                 noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
                 noise.start(t);
@@ -90,30 +102,28 @@
             else if (type === 'conquer') {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(400, t);
-                osc.frequency.linearRampToValueAtTime(800, t + 0.1);
-                osc.frequency.linearRampToValueAtTime(1200, t + 0.3);
-                gain.gain.setValueAtTime(0.2, t);
-                gain.gain.linearRampToValueAtTime(0, t + 0.4);
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(300, t);
+                osc.frequency.linearRampToValueAtTime(600, t + 0.1);
+                osc.frequency.linearRampToValueAtTime(900, t + 0.2);
+                gain.gain.setValueAtTime(0.1, t);
+                gain.gain.linearRampToValueAtTime(0, t + 0.3);
                 osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(t); osc.stop(t + 0.4);
+                osc.start(t); osc.stop(t + 0.3);
             }
         }
 
         // --- SVG Paths rendered via Path2D ---
-        // A classic top-down WWII plane shape
         const planeSVG = new Path2D("M 0,-12 C 2,-10 2,-4 2,-2 L 14,-2 L 14,2 L 2,2 L 2,8 L 6,10 L 6,12 L -6,12 L -6,10 L -2,8 L -2,2 L -14,2 L -14,-2 L -2,-2 C -2,-4 -2,-10 0,-12 Z");
-        // A tiny bomb shape
         const bombSVG = new Path2D("M 0,-4 C 3,-2 3,3 0,6 C -3,3 -3,-2 0,-4 Z M -2,-6 L 2,-6 L 0,-4 Z");
 
         // Game Constants & Variables
         const TEAM_NEUTRAL = 0, TEAM_PLAYER = 1, TEAM_ENEMY = 2;
         const COLORS = {
-            [TEAM_NEUTRAL]: { border: '#aaaaaa', fill: '#4E8752' },
-            [TEAM_PLAYER]:  { border: '#00ffff', fill: '#4E8752' },
-            [TEAM_ENEMY]:   { border: '#ff3333', fill: '#4E8752' },
-            oceanShallow: 'rgba(28, 163, 236, 0.3)', sand: '#d4c098'
+            [TEAM_NEUTRAL]: { border: '#aaaaaa', fill: '#4E8752', glow: 'rgba(255,255,255,0.1)' },
+            [TEAM_PLAYER]:  { border: '#00ffff', fill: '#3b7a57', glow: 'rgba(0,255,255,0.3)' },
+            [TEAM_ENEMY]:   { border: '#ff3333', fill: '#7a3b3b', glow: 'rgba(255,51,51,0.3)' },
+            sand: '#d4c098'
         };
 
         let islands = [], fleets = [], effects = [], selectedIsland = null;
@@ -132,11 +142,11 @@
                 this.x = x; this.y = y; this.baseRadius = radius; this.owner = owner;
                 this.maxPlanes = Math.floor(radius * 1.5);
                 this.planes = owner === TEAM_NEUTRAL ? Math.floor(radius / 3) : 25;
-                this.productionRate = radius / 60; 
+                this.productionRate = radius / 40; 
                 this.vertices = [];
-                for (let i = 0; i < 16; i++) {
-                    const angle = (i / 16) * Math.PI * 2;
-                    const r = radius * (0.75 + Math.random() * 0.4); 
+                for (let i = 0; i < 18; i++) {
+                    const angle = (i / 18) * Math.PI * 2;
+                    const r = radius * (0.8 + Math.random() * 0.3); 
                     this.vertices.push({ x: Math.cos(angle) * r, y: Math.sin(angle) * r });
                 }
             }
@@ -148,38 +158,43 @@
             }
 
             draw(ctx) {
-                // Water glow
-                ctx.fillStyle = COLORS.oceanShallow;
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.baseRadius + 15, 0, Math.PI * 2); ctx.fill();
+                // Tactical Glow
+                ctx.fillStyle = COLORS[this.owner].glow;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.baseRadius + 10, 0, Math.PI * 2); ctx.fill();
 
-                // Selection glow
-                ctx.shadowColor = COLORS[this.owner].border;
-                ctx.shadowBlur = this === selectedIsland ? 25 : 10;
-                ctx.strokeStyle = COLORS[this.owner].border;
-                ctx.lineWidth = this === selectedIsland ? 5 : 2;
+                // Selection Ring
+                if (this === selectedIsland) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.baseRadius + 20 + Math.sin(Date.now()/150)*5, 0, Math.PI * 2);
+                    ctx.strokeStyle = COLORS[this.owner].border;
+                    ctx.lineWidth = 2; ctx.stroke();
+                }
 
                 // Terrain
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 ctx.fillStyle = COLORS.sand;
+                ctx.strokeStyle = COLORS[this.owner].border;
+                ctx.lineWidth = this === selectedIsland ? 4 : 2;
                 ctx.beginPath();
                 this.vertices.forEach((v, i) => i === 0 ? ctx.moveTo(v.x, v.y) : ctx.lineTo(v.x, v.y));
                 ctx.closePath();
                 ctx.fill(); ctx.stroke();
                 
-                ctx.shadowBlur = 0; // Turn off shadow for inner terrain
                 ctx.fillStyle = COLORS[this.owner].fill;
                 ctx.beginPath();
-                this.vertices.forEach((v, i) => i === 0 ? ctx.moveTo(v.x * 0.7, v.y * 0.7) : ctx.lineTo(v.x * 0.7, v.y * 0.7));
+                this.vertices.forEach((v, i) => i === 0 ? ctx.moveTo(v.x * 0.65, v.y * 0.65) : ctx.lineTo(v.x * 0.65, v.y * 0.65));
                 ctx.closePath();
                 ctx.fill();
                 ctx.restore();
 
+                // Text Background for readability
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.beginPath(); ctx.arc(this.x, this.y, 14, 0, Math.PI*2); ctx.fill();
+
                 // Text
-                ctx.fillStyle = 'white'; ctx.font = 'bold 20px Courier New';
+                ctx.fillStyle = 'white'; ctx.font = 'bold 16px Courier New';
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.strokeStyle = 'black'; ctx.lineWidth = 3;
-                ctx.strokeText(Math.floor(this.planes), this.x, this.y);
                 ctx.fillText(Math.floor(this.planes), this.x, this.y);
             }
         }
@@ -188,19 +203,18 @@
             constructor(source, target, count) {
                 this.x = source.x; this.y = source.y; 
                 this.target = target; this.count = count; this.owner = source.owner;
-                this.speed = 120;
+                this.speed = 100;
                 this.angle = Math.atan2(target.y - source.y, target.x - source.x);
                 this.age = 0;
 
-                // Generate visual swarm data
                 this.swarm = [];
-                const visualPlanes = Math.min(count, 15); // Cap visual planes to prevent clutter
+                const visualPlanes = Math.min(count, 12); 
                 for(let i=0; i<visualPlanes; i++) {
                     this.swarm.push({
-                        offsetX: (Math.random() - 0.5) * 30,
-                        offsetY: (Math.random() - 0.5) * 30,
+                        offsetX: (Math.random() - 0.5) * 25,
+                        offsetY: (Math.random() - 0.5) * 25,
                         phase: Math.random() * Math.PI * 2,
-                        speed: 1 + Math.random() * 2
+                        speed: 2 + Math.random() * 2
                     });
                 }
                 playSound('launch');
@@ -219,9 +233,8 @@
 
             arrive() {
                 if (this.target.owner === this.owner) {
-                    this.target.planes += this.count; // Reinforce
+                    this.target.planes += this.count;
                 } else {
-                    // Attack
                     this.target.planes -= this.count;
                     effects.push(new Explosion(this.target.x, this.target.y, COLORS[this.owner].border));
                     playSound('explosion');
@@ -237,26 +250,20 @@
             draw(ctx) {
                 ctx.save();
                 ctx.translate(this.x, this.y);
-                ctx.rotate(this.angle + Math.PI/2); // SVG faces up, so rotate 90deg
+                ctx.rotate(this.angle + Math.PI/2); 
 
-                // Draw Swarm
                 ctx.fillStyle = COLORS[this.owner].border;
                 this.swarm.forEach(p => {
-                    const sway = Math.sin(this.age * p.speed + p.phase) * 10;
+                    const sway = Math.sin(this.age * p.speed + p.phase) * 6;
                     ctx.save();
                     ctx.translate(p.offsetX + sway, p.offsetY);
-                    // Slight wobble to the plane's rotation
-                    ctx.rotate(Math.sin(this.age * 5 + p.phase) * 0.1); 
-                    // Draw plane path
+                    ctx.rotate(Math.sin(this.age * 8 + p.phase) * 0.08); 
                     ctx.fill(planeSVG);
                     ctx.restore();
                 });
 
-                // Count Text
                 ctx.rotate(-(this.angle + Math.PI/2));
                 ctx.fillStyle = 'white'; ctx.font = '14px Courier New';
-                ctx.strokeStyle = 'black'; ctx.lineWidth = 2;
-                ctx.strokeText(Math.floor(this.count), 0, -25);
                 ctx.fillText(Math.floor(this.count), 0, -25);
                 ctx.restore();
             }
@@ -265,83 +272,49 @@
         class Explosion {
             constructor(x, y, color) {
                 this.x = x; this.y = y; this.color = color;
-                this.age = 0; this.maxAge = 0.8;
+                this.age = 0; this.maxAge = 0.6;
                 this.particles = [];
-                
-                // Splatter dots
-                for(let i=0; i<10; i++){
+                for(let i=0; i<8; i++){
                     this.particles.push({
-                        dx: (Math.random()-0.5)*100,
-                        dy: (Math.random()-0.5)*100,
-                        size: Math.random()*4 + 2
-                    });
-                }
-                // Falling bombs
-                this.bombs = [];
-                for(let i=0; i<3; i++){
-                    this.bombs.push({
-                        dx: (Math.random()-0.5)*40,
-                        dy: -Math.random()*20 - 10,
-                        rot: Math.random() * Math.PI
+                        dx: (Math.random()-0.5)*120, dy: (Math.random()-0.5)*120, size: Math.random()*3 + 1
                     });
                 }
             }
             update(dt) {
-                this.age += dt;
-                return this.age >= this.maxAge;
+                this.age += dt; return this.age >= this.maxAge;
             }
             draw(ctx) {
                 const progress = this.age / this.maxAge;
                 const alpha = 1 - progress;
-                ctx.save();
-                ctx.translate(this.x, this.y);
-
-                // Bombs dropping
-                ctx.fillStyle = `rgba(30,30,30,${alpha})`;
-                this.bombs.forEach(b => {
-                    ctx.save();
-                    ctx.translate(b.dx, b.dy + (progress * 60)); // Gravity fall
-                    ctx.rotate(b.rot + progress * 2);
-                    ctx.fill(bombSVG);
-                    ctx.restore();
-                });
-
-                // Blast wave / Splatter
-                ctx.fillStyle = this.color;
-                ctx.globalAlpha = alpha;
+                ctx.save(); ctx.translate(this.x, this.y);
+                
+                ctx.fillStyle = this.color; ctx.globalAlpha = alpha;
                 this.particles.forEach(p => {
-                    ctx.beginPath();
-                    ctx.arc(p.dx * progress, p.dy * progress, p.size, 0, Math.PI*2);
-                    ctx.fill();
+                    ctx.beginPath(); ctx.arc(p.dx * progress, p.dy * progress, p.size, 0, Math.PI*2); ctx.fill();
                 });
 
-                // Expanding ring
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(0, 0, progress * 40, 0, Math.PI*2);
-                ctx.stroke();
-
+                ctx.strokeStyle = this.color; ctx.lineWidth = 3 * alpha;
+                ctx.beginPath(); ctx.arc(0, 0, progress * 45, 0, Math.PI*2); ctx.stroke();
                 ctx.restore();
             }
         }
 
-        // --- Initialization & Flow ---
+        // --- Core Game Functions ---
 
         function initMap() {
-            islands = []; fleets = []; effects = [];
-            const numIslands = Math.max(7, Math.floor((width * height) / 45000)); 
+            islands = []; fleets = []; effects = []; selectedIsland = null;
+            const numIslands = Math.max(6, Math.floor((width * height) / 45000)); 
             
             for (let i = 0; i < numIslands; i++) {
                 let x, y, radius, valid;
                 for(let attempts=0; attempts<150; attempts++) {
                     valid = true;
                     radius = 35 + Math.random() * 45;
-                    x = radius + Math.random() * (width - radius * 2);
-                    y = radius + 60 + Math.random() * (height - radius * 2 - 60);
+                    x = radius + 20 + Math.random() * (width - radius * 2 - 40);
+                    y = radius + 80 + Math.random() * (height - radius * 2 - 100);
 
                     for (let j = 0; j < islands.length; j++) {
-                        if (Math.hypot(islands[j].x - x, islands[j].y - y) < radius + islands[j].baseRadius + 50) {
+                        if (Math.hypot(islands[j].x - x, islands[j].y - y) < radius + islands[j].baseRadius + 60) {
                             valid = false; break;
                         }
                     }
@@ -350,23 +323,67 @@
                 if (valid) islands.push(new Island(x, y, radius, TEAM_NEUTRAL));
             }
 
-            // Players
             if (islands.length >= 2) {
-                islands.sort((a,b) => a.x - b.x);
-                let p1 = islands[0], p2 = islands[islands.length-1];
+                islands.sort((a,b) => a.y - b.y); // Sort by Y to put one top, one bottom
+                let p1 = islands[islands.length-1], p2 = islands[0];
                 p1.owner = TEAM_PLAYER; p2.owner = TEAM_ENEMY;
                 p1.baseRadius = p2.baseRadius = 60; 
-                p1.planes = p2.planes = 40; p1.maxPlanes = p2.maxPlanes = 150;
+                p1.planes = p2.planes = 50; p1.maxPlanes = p2.maxPlanes = 150;
             }
         }
 
-        function handleInteraction(x, y) {
-            if(!gameActive) {
-                gameActive = true;
-                document.getElementById('overlay').style.display = 'none';
-                initAudio();
-                return;
+        function checkWinCondition() {
+            const pCount = islands.filter(i => i.owner === TEAM_PLAYER).length + fleets.filter(f => f.owner === TEAM_PLAYER).length;
+            const eCount = islands.filter(i => i.owner === TEAM_ENEMY).length + fleets.filter(f => f.owner === TEAM_ENEMY).length;
+            
+            if (pCount === 0 || eCount === 0) {
+                gameActive = false;
+                overlay.style.display = 'flex';
+                overlayTitle.innerText = pCount === 0 ? "DEFEAT" : "VICTORY";
+                overlayTitle.style.color = pCount === 0 ? COLORS[TEAM_ENEMY].border : COLORS[TEAM_PLAYER].border;
+                document.getElementById('overlay-subtext').innerText = "Tap to Restart";
             }
+        }
+
+        function enemyAI() {
+            islands.filter(i => i.owner === TEAM_ENEMY && i.planes > 20).forEach(island => {
+                if (Math.random() < 0.01) { // 1% chance per frame per island
+                    let targets = islands.filter(i => i.owner !== TEAM_ENEMY);
+                    if(targets.length > 0) {
+                        // Score targets based on distance and weakness
+                        targets.forEach(t => {
+                            const dist = Math.hypot(t.x - island.x, t.y - island.y);
+                            t.aiScore = dist + (t.planes * 5); // Lower score is better
+                        });
+                        targets.sort((a,b) => a.aiScore - b.aiScore);
+                        
+                        // Pick top target usually, occasionally random
+                        let target = Math.random() > 0.3 ? targets[0] : targets[Math.floor(Math.random() * targets.length)];
+                        
+                        const sendCount = Math.floor(island.planes / 2);
+                        island.planes -= sendCount;
+                        fleets.push(new Fleet(island, target, sendCount));
+                    }
+                }
+            });
+        }
+
+        // --- Inputs ---
+
+        function handleStart(e) {
+            e.preventDefault();
+            if(!gameActive) {
+                initAudio();
+                initMap();
+                gameActive = true;
+                overlay.style.display = 'none';
+            }
+        }
+        overlay.addEventListener('mousedown', handleStart);
+        overlay.addEventListener('touchstart', handleStart, { passive: false });
+
+        function handleInteraction(x, y) {
+            if(!gameActive) return;
 
             let clickedIsland = islands.find(i => Math.hypot(i.x - x, i.y - y) <= i.baseRadius);
 
@@ -377,39 +394,39 @@
                         selectedIsland.planes -= sendCount;
                         fleets.push(new Fleet(selectedIsland, clickedIsland, sendCount));
                     }
+                    selectedIsland = null;
+                } else if (!clickedIsland) {
+                    selectedIsland = null; // Clicked water, deselect
                 }
-                selectedIsland = null;
             } else if (clickedIsland && clickedIsland.owner === TEAM_PLAYER) {
                 selectedIsland = clickedIsland;
-                playSound('launch'); // Tiny sound to acknowledge selection
+                playSound('launch'); 
             }
         }
 
-        function enemyAI() {
-            islands.filter(i => i.owner === TEAM_ENEMY && i.planes > 15).forEach(island => {
-                if (Math.random() < 0.008) {
-                    let targets = islands.filter(i => i.owner !== TEAM_ENEMY);
-                    if(targets.length > 0) {
-                        targets.sort((a,b) => a.planes - b.planes);
-                        let target = Math.random() > 0.4 ? targets[0] : targets[Math.floor(Math.random() * targets.length)];
-                        const sendCount = Math.floor(island.planes / 2);
-                        island.planes -= sendCount;
-                        fleets.push(new Fleet(island, target, sendCount));
-                    }
-                }
-            });
-        }
-
-        // Inputs
         canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInteraction(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
         canvas.addEventListener('mousedown', (e) => handleInteraction(e.clientX, e.clientY));
 
-        // Loop
+        // --- Loop and Rendering ---
+
+        function drawGrid(ctx) {
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            const gridSize = 50;
+            gridOffset = (gridOffset + 0.2) % gridSize;
+
+            ctx.beginPath();
+            for(let x = gridOffset; x < width; x += gridSize) { ctx.moveTo(x, 0); ctx.lineTo(x, height); }
+            for(let y = gridOffset; y < height; y += gridSize) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
+            ctx.stroke();
+        }
+
         function loop(timestamp) {
-            const dt = Math.min((timestamp - lastTime) / 1000, 0.1); // cap dt at 0.1 to avoid background tab jumps
+            const dt = Math.min((timestamp - lastTime) / 1000, 0.1); 
             lastTime = timestamp;
 
             ctx.clearRect(0, 0, width, height);
+            drawGrid(ctx);
 
             if (gameActive) {
                 islands.forEach(i => i.update(dt));
@@ -421,6 +438,7 @@
                 for (let i = effects.length - 1; i >= 0; i--) {
                     if (effects[i].update(dt)) effects.splice(i, 1);
                 }
+                checkWinCondition();
             }
 
             islands.forEach(i => i.draw(ctx));
@@ -430,7 +448,6 @@
             requestAnimationFrame(loop);
         }
 
-        initMap();
         requestAnimationFrame(timestamp => { lastTime = timestamp; loop(timestamp); });
 
     </script>
