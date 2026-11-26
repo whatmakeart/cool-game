@@ -1,0 +1,1373 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Pacific Strike // Archipelago 3D</title><style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#061c2b;color:#e9f8ff;font:14px system-ui,sans-serif}button,select,textarea{font:inherit}button,select{color:inherit;background:#18384a;border:1px solid #456477;border-radius:10px;padding:10px 12px;cursor:pointer;touch-action:manipulation}button:active{transform:scale(.97)}button:disabled{opacity:.4;cursor:default}.primary{background:#76edff;color:#06232d;font-weight:800;border:0}.hide{display:none!important}#app{height:100dvh;display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}header,footer{flex:none;background:#091f2d;z-index:2}header{padding:7px 10px 6px;border-bottom:1px solid #315364}#top{display:flex;align-items:center;justify-content:space-between;gap:5px}#top button{padding:6px 9px}#brand{font-size:12px;font-weight:900;letter-spacing:.14em;color:#b9d8e5}#score{display:flex;justify-content:space-between;font-weight:800;font-variant-numeric:tabular-nums;margin:5px 0 3px}.blue{color:#66e9ff}.red{color:#ff897c}#balance{height:4px;background:#ff897c;border-radius:4px;overflow:hidden}#balance i{display:block;background:#66e9ff;height:100%;width:50%}#field{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;background:#0a435b}canvas{position:absolute;width:100%;height:100%;inset:0;touch-action:none}#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}.islabel{position:absolute;transform:translate(-50%,-50%);text-align:center;line-height:1;white-space:nowrap;filter:drop-shadow(0 2px 2px #00141f)}.islabel b{display:block;font-size:clamp(14px,4vw,24px);text-shadow:1px 1px #03101a,-1px -1px #03101a,0 2px #03101a}.islabel small{font-size:9px;font-weight:800;letter-spacing:.05em;background:#09222bd9;border-radius:4px;padding:2px 4px;color:#e9f8ff}.islabel.sel small{background:#007b95}.float{position:absolute;font-size:12px;font-weight:900;text-shadow:0 1px 3px #000;transform:translate(-50%,-50%);white-space:nowrap}#guide{position:absolute;inset:0;pointer-events:none;width:100%;height:100%}#notice{position:absolute;top:7px;left:50%;transform:translateX(-50%);font-size:11px;letter-spacing:.04em;color:#fff;background:#071c29b8;padding:5px 10px;border-radius:20px;pointer-events:none;max-width:95%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#cinema{position:absolute;inset:0;display:grid;place-content:center;text-align:center;pointer-events:none;background:linear-gradient(#03121d99,transparent 28%,transparent 70%,#03121d99);text-shadow:0 3px 10px #000}#cinema strong{font-size:clamp(24px,7vw,48px);letter-spacing:.12em}#cinema span{font-size:11px;letter-spacing:.26em;color:#a9ecff}footer{padding:6px 8px 8px;border-top:1px solid #315364}#energy{font-size:11px;color:#ffda8a;display:flex;align-items:center;gap:8px;margin-bottom:5px}#energybar{height:4px;flex:1;border-radius:3px;background:#263e49;overflow:hidden}#energybar i{display:block;height:100%;background:#ffd36e;width:0}#commands,#powers{display:flex;gap:5px;margin-top:4px}#commands button,#powers button{flex:1;padding:8px 3px;min-width:0;font-size:11px;font-weight:750}button.active{background:#22798b;border-color:#75eeff}#powers button.active{background:#826127;border-color:#ffd37e}.modal{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:#04131dd9;padding:16px;overflow:auto}.panel{width:min(480px,100%);max-height:100%;overflow:auto;padding:23px;border:1px solid #416274;border-radius:22px;background:linear-gradient(145deg,#12384c,#081e2b);box-shadow:0 20px 80px #0008;touch-action:pan-y}.panel h1{font-size:clamp(30px,8vw,50px);line-height:.94;margin:10px 0;letter-spacing:-.04em}.panel h2{margin:0 0 12px}.panel p{color:#b9d1de;line-height:1.45}.panel button,.panel select{width:100%;margin:4px 0}.eyebrow{font-size:11px;letter-spacing:.19em;color:#79dff0;font-weight:800}.panel label{display:block;margin-top:10px;color:#c4dce8;font-size:12px}.panel textarea{width:100%;min-height:76px;resize:vertical;background:#061b29;color:#d9f7ff;border:1px solid #527183;border-radius:8px;padding:9px;overflow-wrap:anywhere;touch-action:pan-y}#netStatus,#error{color:#ffd68b;font-size:12px;overflow-wrap:anywhere}#help p{margin:8px 0}#fallback{position:absolute;inset:0;pointer-events:none}@media(max-height:420px){header{padding:3px 8px}footer{padding:2px 6px}#commands button,#powers button{padding:4px}#energy{margin:0}#brand{display:none}.panel{padding:12px}}
+#qrCanvas{position:static;display:block;width:min(260px,100%);height:auto;aspect-ratio:1;margin:12px auto;border-radius:5px;image-rendering:pixelated}#qrPanel input{width:100%;background:#061b29;color:#e9f8ff;border:1px solid #527183;border-radius:8px;padding:10px;font:inherit}#qrStatus{color:#ffd68b;overflow-wrap:anywhere;min-height:2em}#qrPanel small{color:#b9d1de}#qrPanel .room{font-size:12px;color:#79dff0;letter-spacing:.1em}#manualOptions{margin-top:12px;border-top:1px solid #416274;padding-top:6px}#manualOptions summary{cursor:pointer;padding:8px 0;color:#b9d1de}</style></head><body><div id="app"><header><div id="top"><span id="brand">PACIFIC / 3D</span><span id="clock">00:00</span><button id="camera" aria-label="Camera mode">Orbit</button><button id="sound" aria-label="Toggle sound">Sound on</button><button id="helpBtn">?</button></div><div id="score"><span id="blue" class="blue">BLUE 0</span><span id="mode">STANDBY</span><span id="red" class="red">RED 0</span></div><div id="balance"><i></i></div></header><main id="field"><canvas id="world"></canvas><canvas id="fallback" class="hide"></canvas><div id="labels"></div><svg id="guide" xmlns="http://www.w3.org/2000/svg"></svg><div id="notice">Ready for deployment</div><div id="cinema" class="hide"><span>OPERATION</span><strong id="cinemaTitle">ARCHIPELAGO</strong><span id="cinemaSub">AIR COMMAND ONLINE</span></div></main><footer><div id="energy">ACE <b id="ace">0</b><div id="energybar"><i></i></div><span id="combo"></span></div><div id="commands"><button data-frac=".25">25%</button><button data-frac=".5" class="active">50%</button><button data-frac="1">100%</button><button id="all">All bases</button><button id="clear">Clear</button></div><div id="powers"><button data-power="boost">Overdrive 35</button><button data-power="shield">Shield 45</button><button data-power="storm">Storm 60</button></div></footer></div>
+<div id="menu" class="modal"><div class="panel"><div class="eyebrow">REAL-TIME AIR STRATEGY / 3D</div><h1>PACIFIC<br>STRIKE<span style="color:#66e9ff">.</span></h1><p>Archipelago • Command an evolving chain of airbases. Launch formations, intercept rivals and dominate the sea.</p><label for="difficulty">Solo difficulty</label><select id="difficulty"><option value="easy">Cadet — relaxed</option><option value="normal" selected>Commander — balanced</option><option value="hard">Warlord — aggressive</option></select><button id="solo" class="primary">Launch solo operation</button><button id="host" class="primary">Host two-player • QR code</button><button id="join">Join with invitation link</button><details id="manualOptions"><summary>Manual Wi-Fi pairing (offline fallback)</summary><button id="manualHost">Host manually</button><button id="manualJoin">Join manually</button></details><p id="error" role="alert"></p><small>Offline solo • QR multiplayer with free online signaling • Manual local pairing</small></div></div>
+<div id="network" class="modal hide"><div class="panel"><div class="eyebrow">DIRECT LINK / WEBRTC</div><h2 id="netTitle">Connect phones</h2><p id="netInstructions"></p><label id="outLabel" for="outCode">Your code</label><textarea id="outCode" readonly placeholder="Generating…"></textarea><button id="copyCode">Copy code</button><div id="inputWrap"><label for="inCode" id="inLabel">Other phone's code</label><textarea id="inCode" placeholder="Paste here"></textarea><button id="acceptCode" class="primary">Continue</button></div><p id="netStatus" aria-live="polite"></p><button id="netBack">Cancel / back to menu</button></div></div>
+<div id="qrNetwork" class="modal hide"><div class="panel" id="qrPanel"><div class="eyebrow">QUICK LINK / MULTIPLAYER</div><h2 id="qrTitle">Connect phones</h2><p id="qrInstructions"></p><div id="qrDisplay" class="hide"><canvas id="qrCanvas" aria-label="Scan this invitation QR code with your phone camera"></canvas><div class="room" id="qrRoom"></div><label for="qrLink">Invitation link</label><input id="qrLink" readonly><button id="qrCopy">Copy invitation link</button></div><div id="qrEntry" class="hide"><label for="qrInput">Invitation link or full room ID</label><input id="qrInput" placeholder="Paste invitation link" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="qrConnect" class="primary">Join battle</button></div><p id="qrStatus" role="status" aria-live="polite"></p><button id="qrRetry" class="hide">Try again</button><button id="qrManual">Use manual Wi-Fi pairing instead</button><button id="qrBack">Cancel / back to menu</button><small>Keep both phones on the same Wi-Fi. QR pairing needs internet access. Your camera app opens the invitation; no camera permission is needed inside the game.</small></div></div>
+<div id="help" class="modal hide"><div class="panel"><h2>Flight command</h2><p><b>Drag</b> from your island to any other. Or <b>tap your island, then tap targets repeatedly</b>. Tap empty sea to clear. Tap a different friendly island after clearing to change source; drag directly from any friendly base for a fresh order.</p><p><b>All bases</b> selects your entire network. Choose 25%, 50% or 100% for each order. Friendly targets receive reinforcements. Your color is shown in the score.</p><p><b>ACE:</b> capture islands and collect caches. Arm a power, then tap a target. Overdrive accelerates production; shield absorbs damage; storm damages and stalls rivals.</p><p>Factory = production • Fortress = defense • Fuel = faster flights • Heavy = larger aircraft. Neutral islands are gold. Aircraft of opposing teams can collide in air combat.</p><p>Orbit gently rotates the 3D view. Static locks it; Cinematic sweeps further. Camera holds while aiming. Solo pauses here; multiplayer does not.</p><button id="resume" class="primary">Return to battle</button><button id="exit">Leave battle / main menu</button></div></div>
+<div id="end" class="modal hide"><div class="panel"><div class="eyebrow">OPERATION COMPLETE</div><h1 id="result">Victory</h1><p id="resultStats"></p><button id="replay" class="primary">Play again / main menu</button></div></div>
+<script>/* QRCode for JavaScript, Copyright (c) 2009 Kazuhiko Arase, MIT license. Adapted from qrcode-terminal.
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+window.PacificQR=(()=>{const modules={"./QR8bitByte":function(module,exports,require){
+var QRMode = require('./QRMode');
+
+function QR8bitByte(data) {
+	this.mode = QRMode.MODE_8BIT_BYTE;
+	this.data = data;
+}
+
+QR8bitByte.prototype = {
+
+	getLength : function() {
+		return this.data.length;
+	},
+	
+	write : function(buffer) {
+		for (var i = 0; i < this.data.length; i++) {
+			// not JIS ...
+			buffer.put(this.data.charCodeAt(i), 8);
+		}
+	}
+};
+
+module.exports = QR8bitByte;
+
+},
+"./QRBitBuffer":function(module,exports,require){
+function QRBitBuffer() {
+	this.buffer = [];
+	this.length = 0;
+}
+
+QRBitBuffer.prototype = {
+
+	get : function(index) {
+		var bufIndex = Math.floor(index / 8);
+		return ( (this.buffer[bufIndex] >>> (7 - index % 8) ) & 1) == 1;
+	},
+	
+	put : function(num, length) {
+		for (var i = 0; i < length; i++) {
+			this.putBit( ( (num >>> (length - i - 1) ) & 1) == 1);
+		}
+	},
+	
+	getLengthInBits : function() {
+		return this.length;
+	},
+	
+	putBit : function(bit) {
+	
+		var bufIndex = Math.floor(this.length / 8);
+		if (this.buffer.length <= bufIndex) {
+			this.buffer.push(0);
+		}
+	
+		if (bit) {
+			this.buffer[bufIndex] |= (0x80 >>> (this.length % 8) );
+		}
+	
+		this.length++;
+	}
+};
+
+module.exports = QRBitBuffer;
+
+},
+"./QRErrorCorrectLevel":function(module,exports,require){
+module.exports = {
+	L : 1,
+	M : 0,
+	Q : 3,
+	H : 2
+};
+
+
+},
+"./QRMaskPattern":function(module,exports,require){
+module.exports = {
+	PATTERN000 : 0,
+	PATTERN001 : 1,
+	PATTERN010 : 2,
+	PATTERN011 : 3,
+	PATTERN100 : 4,
+	PATTERN101 : 5,
+	PATTERN110 : 6,
+	PATTERN111 : 7
+};
+
+},
+"./QRMath":function(module,exports,require){
+var QRMath = {
+
+	glog : function(n) {
+	
+		if (n < 1) {
+			throw new Error("glog(" + n + ")");
+		}
+		
+		return QRMath.LOG_TABLE[n];
+	},
+	
+	gexp : function(n) {
+	
+		while (n < 0) {
+			n += 255;
+		}
+	
+		while (n >= 256) {
+			n -= 255;
+		}
+	
+		return QRMath.EXP_TABLE[n];
+	},
+	
+	EXP_TABLE : new Array(256),
+	
+	LOG_TABLE : new Array(256)
+
+};
+	
+for (var i = 0; i < 8; i++) {
+	QRMath.EXP_TABLE[i] = 1 << i;
+}
+for (var i = 8; i < 256; i++) {
+	QRMath.EXP_TABLE[i] = QRMath.EXP_TABLE[i - 4]
+		^ QRMath.EXP_TABLE[i - 5]
+		^ QRMath.EXP_TABLE[i - 6]
+		^ QRMath.EXP_TABLE[i - 8];
+}
+for (var i = 0; i < 255; i++) {
+	QRMath.LOG_TABLE[QRMath.EXP_TABLE[i] ] = i;
+}
+
+module.exports = QRMath;
+
+},
+"./QRMode":function(module,exports,require){
+module.exports = {
+    MODE_NUMBER :       1 << 0,
+    MODE_ALPHA_NUM :    1 << 1,
+    MODE_8BIT_BYTE :    1 << 2,
+    MODE_KANJI :        1 << 3
+};
+
+},
+"./QRPolynomial":function(module,exports,require){
+var QRMath = require('./QRMath');
+
+function QRPolynomial(num, shift) {
+	if (num.length === undefined) {
+		throw new Error(num.length + "/" + shift);
+	}
+
+	var offset = 0;
+
+	while (offset < num.length && num[offset] === 0) {
+		offset++;
+	}
+
+	this.num = new Array(num.length - offset + shift);
+	for (var i = 0; i < num.length - offset; i++) {
+		this.num[i] = num[i + offset];
+	}
+}
+
+QRPolynomial.prototype = {
+
+	get : function(index) {
+		return this.num[index];
+	},
+	
+	getLength : function() {
+		return this.num.length;
+	},
+	
+	multiply : function(e) {
+	
+		var num = new Array(this.getLength() + e.getLength() - 1);
+	
+		for (var i = 0; i < this.getLength(); i++) {
+			for (var j = 0; j < e.getLength(); j++) {
+				num[i + j] ^= QRMath.gexp(QRMath.glog(this.get(i) ) + QRMath.glog(e.get(j) ) );
+			}
+		}
+	
+		return new QRPolynomial(num, 0);
+	},
+	
+	mod : function(e) {
+	
+		if (this.getLength() - e.getLength() < 0) {
+			return this;
+		}
+	
+		var ratio = QRMath.glog(this.get(0) ) - QRMath.glog(e.get(0) );
+	
+		var num = new Array(this.getLength() );
+		
+		for (var i = 0; i < this.getLength(); i++) {
+			num[i] = this.get(i);
+		}
+		
+		for (var x = 0; x < e.getLength(); x++) {
+			num[x] ^= QRMath.gexp(QRMath.glog(e.get(x) ) + ratio);
+		}
+	
+		// recursive call
+		return new QRPolynomial(num, 0).mod(e);
+	}
+};
+
+module.exports = QRPolynomial;
+
+},
+"./QRRSBlock":function(module,exports,require){
+var QRErrorCorrectLevel = require('./QRErrorCorrectLevel');
+
+function QRRSBlock(totalCount, dataCount) {
+	this.totalCount = totalCount;
+	this.dataCount  = dataCount;
+}
+
+QRRSBlock.RS_BLOCK_TABLE = [
+
+	// L
+	// M
+	// Q
+	// H
+
+	// 1
+	[1, 26, 19],
+	[1, 26, 16],
+	[1, 26, 13],
+	[1, 26, 9],
+	
+	// 2
+	[1, 44, 34],
+	[1, 44, 28],
+	[1, 44, 22],
+	[1, 44, 16],
+
+	// 3
+	[1, 70, 55],
+	[1, 70, 44],
+	[2, 35, 17],
+	[2, 35, 13],
+
+	// 4		
+	[1, 100, 80],
+	[2, 50, 32],
+	[2, 50, 24],
+	[4, 25, 9],
+	
+	// 5
+	[1, 134, 108],
+	[2, 67, 43],
+	[2, 33, 15, 2, 34, 16],
+	[2, 33, 11, 2, 34, 12],
+	
+	// 6
+	[2, 86, 68],
+	[4, 43, 27],
+	[4, 43, 19],
+	[4, 43, 15],
+	
+	// 7		
+	[2, 98, 78],
+	[4, 49, 31],
+	[2, 32, 14, 4, 33, 15],
+	[4, 39, 13, 1, 40, 14],
+	
+	// 8
+	[2, 121, 97],
+	[2, 60, 38, 2, 61, 39],
+	[4, 40, 18, 2, 41, 19],
+	[4, 40, 14, 2, 41, 15],
+	
+	// 9
+	[2, 146, 116],
+	[3, 58, 36, 2, 59, 37],
+	[4, 36, 16, 4, 37, 17],
+	[4, 36, 12, 4, 37, 13],
+	
+	// 10		
+	[2, 86, 68, 2, 87, 69],
+	[4, 69, 43, 1, 70, 44],
+	[6, 43, 19, 2, 44, 20],
+	[6, 43, 15, 2, 44, 16],
+
+	// 11
+	[4, 101, 81],
+	[1, 80, 50, 4, 81, 51],
+	[4, 50, 22, 4, 51, 23],
+	[3, 36, 12, 8, 37, 13],
+
+	// 12
+	[2, 116, 92, 2, 117, 93],
+	[6, 58, 36, 2, 59, 37],
+	[4, 46, 20, 6, 47, 21],
+	[7, 42, 14, 4, 43, 15],
+
+	// 13
+	[4, 133, 107],
+	[8, 59, 37, 1, 60, 38],
+	[8, 44, 20, 4, 45, 21],
+	[12, 33, 11, 4, 34, 12],
+
+	// 14
+	[3, 145, 115, 1, 146, 116],
+	[4, 64, 40, 5, 65, 41],
+	[11, 36, 16, 5, 37, 17],
+	[11, 36, 12, 5, 37, 13],
+
+	// 15
+	[5, 109, 87, 1, 110, 88],
+	[5, 65, 41, 5, 66, 42],
+	[5, 54, 24, 7, 55, 25],
+	[11, 36, 12],
+
+	// 16
+	[5, 122, 98, 1, 123, 99],
+	[7, 73, 45, 3, 74, 46],
+	[15, 43, 19, 2, 44, 20],
+	[3, 45, 15, 13, 46, 16],
+
+	// 17
+	[1, 135, 107, 5, 136, 108],
+	[10, 74, 46, 1, 75, 47],
+	[1, 50, 22, 15, 51, 23],
+	[2, 42, 14, 17, 43, 15],
+
+	// 18
+	[5, 150, 120, 1, 151, 121],
+	[9, 69, 43, 4, 70, 44],
+	[17, 50, 22, 1, 51, 23],
+	[2, 42, 14, 19, 43, 15],
+
+	// 19
+	[3, 141, 113, 4, 142, 114],
+	[3, 70, 44, 11, 71, 45],
+	[17, 47, 21, 4, 48, 22],
+	[9, 39, 13, 16, 40, 14],
+
+	// 20
+	[3, 135, 107, 5, 136, 108],
+	[3, 67, 41, 13, 68, 42],
+	[15, 54, 24, 5, 55, 25],
+	[15, 43, 15, 10, 44, 16],
+
+	// 21
+	[4, 144, 116, 4, 145, 117],
+	[17, 68, 42],
+	[17, 50, 22, 6, 51, 23],
+	[19, 46, 16, 6, 47, 17],
+
+	// 22
+	[2, 139, 111, 7, 140, 112],
+	[17, 74, 46],
+	[7, 54, 24, 16, 55, 25],
+	[34, 37, 13],
+
+	// 23
+	[4, 151, 121, 5, 152, 122],
+	[4, 75, 47, 14, 76, 48],
+	[11, 54, 24, 14, 55, 25],
+	[16, 45, 15, 14, 46, 16],
+
+	// 24
+	[6, 147, 117, 4, 148, 118],
+	[6, 73, 45, 14, 74, 46],
+	[11, 54, 24, 16, 55, 25],
+	[30, 46, 16, 2, 47, 17],
+
+	// 25
+	[8, 132, 106, 4, 133, 107],
+	[8, 75, 47, 13, 76, 48],
+	[7, 54, 24, 22, 55, 25],
+	[22, 45, 15, 13, 46, 16],
+
+	// 26
+	[10, 142, 114, 2, 143, 115],
+	[19, 74, 46, 4, 75, 47],
+	[28, 50, 22, 6, 51, 23],
+	[33, 46, 16, 4, 47, 17],
+
+	// 27
+	[8, 152, 122, 4, 153, 123],
+	[22, 73, 45, 3, 74, 46],
+	[8, 53, 23, 26, 54, 24],
+	[12, 45, 15, 28, 46, 16],
+
+	// 28
+	[3, 147, 117, 10, 148, 118],
+	[3, 73, 45, 23, 74, 46],
+	[4, 54, 24, 31, 55, 25],
+	[11, 45, 15, 31, 46, 16],
+
+	// 29
+	[7, 146, 116, 7, 147, 117],
+	[21, 73, 45, 7, 74, 46],
+	[1, 53, 23, 37, 54, 24],
+	[19, 45, 15, 26, 46, 16],
+
+	// 30
+	[5, 145, 115, 10, 146, 116],
+	[19, 75, 47, 10, 76, 48],
+	[15, 54, 24, 25, 55, 25],
+	[23, 45, 15, 25, 46, 16],
+
+	// 31
+	[13, 145, 115, 3, 146, 116],
+	[2, 74, 46, 29, 75, 47],
+	[42, 54, 24, 1, 55, 25],
+	[23, 45, 15, 28, 46, 16],
+
+	// 32
+	[17, 145, 115],
+	[10, 74, 46, 23, 75, 47],
+	[10, 54, 24, 35, 55, 25],
+	[19, 45, 15, 35, 46, 16],
+
+	// 33
+	[17, 145, 115, 1, 146, 116],
+	[14, 74, 46, 21, 75, 47],
+	[29, 54, 24, 19, 55, 25],
+	[11, 45, 15, 46, 46, 16],
+
+	// 34
+	[13, 145, 115, 6, 146, 116],
+	[14, 74, 46, 23, 75, 47],
+	[44, 54, 24, 7, 55, 25],
+	[59, 46, 16, 1, 47, 17],
+
+	// 35
+	[12, 151, 121, 7, 152, 122],
+	[12, 75, 47, 26, 76, 48],
+	[39, 54, 24, 14, 55, 25],
+	[22, 45, 15, 41, 46, 16],
+
+	// 36
+	[6, 151, 121, 14, 152, 122],
+	[6, 75, 47, 34, 76, 48],
+	[46, 54, 24, 10, 55, 25],
+	[2, 45, 15, 64, 46, 16],
+
+	// 37
+	[17, 152, 122, 4, 153, 123],
+	[29, 74, 46, 14, 75, 47],
+	[49, 54, 24, 10, 55, 25],
+	[24, 45, 15, 46, 46, 16],
+
+	// 38
+	[4, 152, 122, 18, 153, 123],
+	[13, 74, 46, 32, 75, 47],
+	[48, 54, 24, 14, 55, 25],
+	[42, 45, 15, 32, 46, 16],
+
+	// 39
+	[20, 147, 117, 4, 148, 118],
+	[40, 75, 47, 7, 76, 48],
+	[43, 54, 24, 22, 55, 25],
+	[10, 45, 15, 67, 46, 16],
+
+	// 40
+	[19, 148, 118, 6, 149, 119],
+	[18, 75, 47, 31, 76, 48],
+	[34, 54, 24, 34, 55, 25],
+	[20, 45, 15, 61, 46, 16]
+];
+
+QRRSBlock.getRSBlocks = function(typeNumber, errorCorrectLevel) {
+	
+	var rsBlock = QRRSBlock.getRsBlockTable(typeNumber, errorCorrectLevel);
+	
+	if (rsBlock === undefined) {
+		throw new Error("bad rs block @ typeNumber:" + typeNumber + "/errorCorrectLevel:" + errorCorrectLevel);
+	}
+
+	var length = rsBlock.length / 3;
+	
+	var list = [];
+	
+	for (var i = 0; i < length; i++) {
+
+		var count = rsBlock[i * 3 + 0];
+		var totalCount = rsBlock[i * 3 + 1];
+		var dataCount  = rsBlock[i * 3 + 2];
+
+		for (var j = 0; j < count; j++) {
+			list.push(new QRRSBlock(totalCount, dataCount) );	
+		}
+	}
+	
+	return list;
+};
+
+QRRSBlock.getRsBlockTable = function(typeNumber, errorCorrectLevel) {
+
+	switch(errorCorrectLevel) {
+	case QRErrorCorrectLevel.L :
+		return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 0];
+	case QRErrorCorrectLevel.M :
+		return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 1];
+	case QRErrorCorrectLevel.Q :
+		return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 2];
+	case QRErrorCorrectLevel.H :
+		return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 3];
+	default :
+		return undefined;
+	}
+};
+
+module.exports = QRRSBlock;
+
+},
+"./QRUtil":function(module,exports,require){
+var QRMode = require('./QRMode');
+var QRPolynomial = require('./QRPolynomial');
+var QRMath = require('./QRMath');
+var QRMaskPattern = require('./QRMaskPattern');
+
+var QRUtil = {
+
+    PATTERN_POSITION_TABLE : [
+        [],
+        [6, 18],
+        [6, 22],
+        [6, 26],
+        [6, 30],
+        [6, 34],
+        [6, 22, 38],
+        [6, 24, 42],
+        [6, 26, 46],
+        [6, 28, 50],
+        [6, 30, 54],        
+        [6, 32, 58],
+        [6, 34, 62],
+        [6, 26, 46, 66],
+        [6, 26, 48, 70],
+        [6, 26, 50, 74],
+        [6, 30, 54, 78],
+        [6, 30, 56, 82],
+        [6, 30, 58, 86],
+        [6, 34, 62, 90],
+        [6, 28, 50, 72, 94],
+        [6, 26, 50, 74, 98],
+        [6, 30, 54, 78, 102],
+        [6, 28, 54, 80, 106],
+        [6, 32, 58, 84, 110],
+        [6, 30, 58, 86, 114],
+        [6, 34, 62, 90, 118],
+        [6, 26, 50, 74, 98, 122],
+        [6, 30, 54, 78, 102, 126],
+        [6, 26, 52, 78, 104, 130],
+        [6, 30, 56, 82, 108, 134],
+        [6, 34, 60, 86, 112, 138],
+        [6, 30, 58, 86, 114, 142],
+        [6, 34, 62, 90, 118, 146],
+        [6, 30, 54, 78, 102, 126, 150],
+        [6, 24, 50, 76, 102, 128, 154],
+        [6, 28, 54, 80, 106, 132, 158],
+        [6, 32, 58, 84, 110, 136, 162],
+        [6, 26, 54, 82, 110, 138, 166],
+        [6, 30, 58, 86, 114, 142, 170]
+    ],
+
+    G15 : (1 << 10) | (1 << 8) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0),
+    G18 : (1 << 12) | (1 << 11) | (1 << 10) | (1 << 9) | (1 << 8) | (1 << 5) | (1 << 2) | (1 << 0),
+    G15_MASK : (1 << 14) | (1 << 12) | (1 << 10)    | (1 << 4) | (1 << 1),
+
+    getBCHTypeInfo : function(data) {
+        var d = data << 10;
+        while (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G15) >= 0) {
+            d ^= (QRUtil.G15 << (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G15) ) );    
+        }
+        return ( (data << 10) | d) ^ QRUtil.G15_MASK;
+    },
+
+    getBCHTypeNumber : function(data) {
+        var d = data << 12;
+        while (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G18) >= 0) {
+            d ^= (QRUtil.G18 << (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G18) ) );    
+        }
+        return (data << 12) | d;
+    },
+
+    getBCHDigit : function(data) {
+
+        var digit = 0;
+
+        while (data !== 0) {
+            digit++;
+            data >>>= 1;
+        }
+
+        return digit;
+    },
+
+    getPatternPosition : function(typeNumber) {
+        return QRUtil.PATTERN_POSITION_TABLE[typeNumber - 1];
+    },
+
+    getMask : function(maskPattern, i, j) {
+        
+        switch (maskPattern) {
+            
+        case QRMaskPattern.PATTERN000 : return (i + j) % 2 === 0;
+        case QRMaskPattern.PATTERN001 : return i % 2 === 0;
+        case QRMaskPattern.PATTERN010 : return j % 3 === 0;
+        case QRMaskPattern.PATTERN011 : return (i + j) % 3 === 0;
+        case QRMaskPattern.PATTERN100 : return (Math.floor(i / 2) + Math.floor(j / 3) ) % 2 === 0;
+        case QRMaskPattern.PATTERN101 : return (i * j) % 2 + (i * j) % 3 === 0;
+        case QRMaskPattern.PATTERN110 : return ( (i * j) % 2 + (i * j) % 3) % 2 === 0;
+        case QRMaskPattern.PATTERN111 : return ( (i * j) % 3 + (i + j) % 2) % 2 === 0;
+
+        default :
+            throw new Error("bad maskPattern:" + maskPattern);
+        }
+    },
+
+    getErrorCorrectPolynomial : function(errorCorrectLength) {
+
+        var a = new QRPolynomial([1], 0);
+
+        for (var i = 0; i < errorCorrectLength; i++) {
+            a = a.multiply(new QRPolynomial([1, QRMath.gexp(i)], 0) );
+        }
+
+        return a;
+    },
+
+    getLengthInBits : function(mode, type) {
+
+        if (1 <= type && type < 10) {
+
+            // 1 - 9
+
+            switch(mode) {
+            case QRMode.MODE_NUMBER     : return 10;
+            case QRMode.MODE_ALPHA_NUM  : return 9;
+            case QRMode.MODE_8BIT_BYTE  : return 8;
+            case QRMode.MODE_KANJI      : return 8;
+            default :
+                throw new Error("mode:" + mode);
+            }
+
+        } else if (type < 27) {
+
+            // 10 - 26
+
+            switch(mode) {
+            case QRMode.MODE_NUMBER     : return 12;
+            case QRMode.MODE_ALPHA_NUM  : return 11;
+            case QRMode.MODE_8BIT_BYTE  : return 16;
+            case QRMode.MODE_KANJI      : return 10;
+            default :
+                throw new Error("mode:" + mode);
+            }
+
+        } else if (type < 41) {
+
+            // 27 - 40
+
+            switch(mode) {
+            case QRMode.MODE_NUMBER     : return 14;
+            case QRMode.MODE_ALPHA_NUM  : return 13;
+            case QRMode.MODE_8BIT_BYTE  : return 16;
+            case QRMode.MODE_KANJI      : return 12;
+            default :
+                throw new Error("mode:" + mode);
+            }
+
+        } else {
+            throw new Error("type:" + type);
+        }
+    },
+
+    getLostPoint : function(qrCode) {
+        
+        var moduleCount = qrCode.getModuleCount();
+        var lostPoint = 0;
+        var row = 0; 
+        var col = 0;
+
+        
+        // LEVEL1
+        
+        for (row = 0; row < moduleCount; row++) {
+
+            for (col = 0; col < moduleCount; col++) {
+
+                var sameCount = 0;
+                var dark = qrCode.isDark(row, col);
+
+                for (var r = -1; r <= 1; r++) {
+
+                    if (row + r < 0 || moduleCount <= row + r) {
+                        continue;
+                    }
+
+                    for (var c = -1; c <= 1; c++) {
+
+                        if (col + c < 0 || moduleCount <= col + c) {
+                            continue;
+                        }
+
+                        if (r === 0 && c === 0) {
+                            continue;
+                        }
+
+                        if (dark === qrCode.isDark(row + r, col + c) ) {
+                            sameCount++;
+                        }
+                    }
+                }
+
+                if (sameCount > 5) {
+                    lostPoint += (3 + sameCount - 5);
+                }
+            }
+        }
+
+        // LEVEL2
+
+        for (row = 0; row < moduleCount - 1; row++) {
+            for (col = 0; col < moduleCount - 1; col++) {
+                var count = 0;
+                if (qrCode.isDark(row,     col    ) ) count++;
+                if (qrCode.isDark(row + 1, col    ) ) count++;
+                if (qrCode.isDark(row,     col + 1) ) count++;
+                if (qrCode.isDark(row + 1, col + 1) ) count++;
+                if (count === 0 || count === 4) {
+                    lostPoint += 3;
+                }
+            }
+        }
+
+        // LEVEL3
+
+        for (row = 0; row < moduleCount; row++) {
+            for (col = 0; col < moduleCount - 6; col++) {
+                if (qrCode.isDark(row, col) && 
+                        !qrCode.isDark(row, col + 1) && 
+                         qrCode.isDark(row, col + 2) && 
+                         qrCode.isDark(row, col + 3) && 
+                         qrCode.isDark(row, col + 4) && 
+                        !qrCode.isDark(row, col + 5) && 
+                         qrCode.isDark(row, col + 6) ) {
+                    lostPoint += 40;
+                }
+            }
+        }
+
+        for (col = 0; col < moduleCount; col++) {
+            for (row = 0; row < moduleCount - 6; row++) {
+                if (qrCode.isDark(row, col) &&
+                        !qrCode.isDark(row + 1, col) &&
+                         qrCode.isDark(row + 2, col) &&
+                         qrCode.isDark(row + 3, col) &&
+                         qrCode.isDark(row + 4, col) &&
+                        !qrCode.isDark(row + 5, col) &&
+                         qrCode.isDark(row + 6, col) ) {
+                    lostPoint += 40;
+                }
+            }
+        }
+
+        // LEVEL4
+        
+        var darkCount = 0;
+
+        for (col = 0; col < moduleCount; col++) {
+            for (row = 0; row < moduleCount; row++) {
+                if (qrCode.isDark(row, col) ) {
+                    darkCount++;
+                }
+            }
+        }
+        
+        var ratio = Math.abs(100 * darkCount / moduleCount / moduleCount - 50) / 5;
+        lostPoint += ratio * 10;
+
+        return lostPoint;       
+    }
+
+};
+
+module.exports = QRUtil;
+
+},
+"./index":function(module,exports,require){
+//---------------------------------------------------------------------
+// QRCode for JavaScript
+//
+// Copyright (c) 2009 Kazuhiko Arase
+//
+// URL: http://www.d-project.com/
+//
+// Licensed under the MIT license:
+//   http://www.opensource.org/licenses/mit-license.php
+//
+// The word "QR Code" is registered trademark of 
+// DENSO WAVE INCORPORATED
+//   http://www.denso-wave.com/qrcode/faqpatent-e.html
+//
+//---------------------------------------------------------------------
+// Modified to work in node for this project (and some refactoring)
+//---------------------------------------------------------------------
+
+var QR8bitByte = require('./QR8bitByte');
+var QRUtil = require('./QRUtil');
+var QRPolynomial = require('./QRPolynomial');
+var QRRSBlock = require('./QRRSBlock');
+var QRBitBuffer = require('./QRBitBuffer');
+
+function QRCode(typeNumber, errorCorrectLevel) {
+	this.typeNumber = typeNumber;
+	this.errorCorrectLevel = errorCorrectLevel;
+	this.modules = null;
+	this.moduleCount = 0;
+	this.dataCache = null;
+	this.dataList = [];
+}
+
+QRCode.prototype = {
+	
+	addData : function(data) {
+		var newData = new QR8bitByte(data);
+		this.dataList.push(newData);
+		this.dataCache = null;
+	},
+	
+	isDark : function(row, col) {
+		if (row < 0 || this.moduleCount <= row || col < 0 || this.moduleCount <= col) {
+			throw new Error(row + "," + col);
+		}
+		return this.modules[row][col];
+	},
+
+	getModuleCount : function() {
+		return this.moduleCount;
+	},
+	
+	make : function() {
+		// Calculate automatically typeNumber if provided is < 1
+		if (this.typeNumber < 1 ){
+			var typeNumber = 1;
+			for (typeNumber = 1; typeNumber < 40; typeNumber++) {
+				var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, this.errorCorrectLevel);
+
+				var buffer = new QRBitBuffer();
+				var totalDataCount = 0;
+				for (var i = 0; i < rsBlocks.length; i++) {
+					totalDataCount += rsBlocks[i].dataCount;
+				}
+
+				for (var x = 0; x < this.dataList.length; x++) {
+					var data = this.dataList[x];
+					buffer.put(data.mode, 4);
+					buffer.put(data.getLength(), QRUtil.getLengthInBits(data.mode, typeNumber) );
+					data.write(buffer);
+				}
+				if (buffer.getLengthInBits() <= totalDataCount * 8)
+					break;
+			}
+			this.typeNumber = typeNumber;
+		}
+		this.makeImpl(false, this.getBestMaskPattern() );
+	},
+	
+	makeImpl : function(test, maskPattern) {
+		
+		this.moduleCount = this.typeNumber * 4 + 17;
+		this.modules = new Array(this.moduleCount);
+		
+		for (var row = 0; row < this.moduleCount; row++) {
+			
+			this.modules[row] = new Array(this.moduleCount);
+			
+			for (var col = 0; col < this.moduleCount; col++) {
+				this.modules[row][col] = null;//(col + row) % 3;
+			}
+		}
+	
+		this.setupPositionProbePattern(0, 0);
+		this.setupPositionProbePattern(this.moduleCount - 7, 0);
+		this.setupPositionProbePattern(0, this.moduleCount - 7);
+		this.setupPositionAdjustPattern();
+		this.setupTimingPattern();
+		this.setupTypeInfo(test, maskPattern);
+		
+		if (this.typeNumber >= 7) {
+			this.setupTypeNumber(test);
+		}
+	
+		if (this.dataCache === null) {
+			this.dataCache = QRCode.createData(this.typeNumber, this.errorCorrectLevel, this.dataList);
+		}
+	
+		this.mapData(this.dataCache, maskPattern);
+	},
+
+	setupPositionProbePattern : function(row, col)  {
+		
+		for (var r = -1; r <= 7; r++) {
+			
+			if (row + r <= -1 || this.moduleCount <= row + r) continue;
+			
+			for (var c = -1; c <= 7; c++) {
+				
+				if (col + c <= -1 || this.moduleCount <= col + c) continue;
+				
+				if ( (0 <= r && r <= 6 && (c === 0 || c === 6) ) || 
+                     (0 <= c && c <= 6 && (r === 0 || r === 6) ) || 
+                     (2 <= r && r <= 4 && 2 <= c && c <= 4) ) {
+					this.modules[row + r][col + c] = true;
+				} else {
+					this.modules[row + r][col + c] = false;
+				}
+			}		
+		}		
+	},
+	
+	getBestMaskPattern : function() {
+	
+		var minLostPoint = 0;
+		var pattern = 0;
+	
+		for (var i = 0; i < 8; i++) {
+			
+			this.makeImpl(true, i);
+	
+			var lostPoint = QRUtil.getLostPoint(this);
+	
+			if (i === 0 || minLostPoint >  lostPoint) {
+				minLostPoint = lostPoint;
+				pattern = i;
+			}
+		}
+	
+		return pattern;
+	},
+	
+	createMovieClip : function(target_mc, instance_name, depth) {
+	
+		var qr_mc = target_mc.createEmptyMovieClip(instance_name, depth);
+		var cs = 1;
+	
+		this.make();
+
+		for (var row = 0; row < this.modules.length; row++) {
+			
+			var y = row * cs;
+			
+			for (var col = 0; col < this.modules[row].length; col++) {
+	
+				var x = col * cs;
+				var dark = this.modules[row][col];
+			
+				if (dark) {
+					qr_mc.beginFill(0, 100);
+					qr_mc.moveTo(x, y);
+					qr_mc.lineTo(x + cs, y);
+					qr_mc.lineTo(x + cs, y + cs);
+					qr_mc.lineTo(x, y + cs);
+					qr_mc.endFill();
+				}
+			}
+		}
+		
+		return qr_mc;
+	},
+
+	setupTimingPattern : function() {
+		
+		for (var r = 8; r < this.moduleCount - 8; r++) {
+			if (this.modules[r][6] !== null) {
+				continue;
+			}
+			this.modules[r][6] = (r % 2 === 0);
+		}
+	
+		for (var c = 8; c < this.moduleCount - 8; c++) {
+			if (this.modules[6][c] !== null) {
+				continue;
+			}
+			this.modules[6][c] = (c % 2 === 0);
+		}
+	},
+	
+	setupPositionAdjustPattern : function() {
+	
+		var pos = QRUtil.getPatternPosition(this.typeNumber);
+		
+		for (var i = 0; i < pos.length; i++) {
+		
+			for (var j = 0; j < pos.length; j++) {
+			
+				var row = pos[i];
+				var col = pos[j];
+				
+				if (this.modules[row][col] !== null) {
+					continue;
+				}
+				
+				for (var r = -2; r <= 2; r++) {
+				
+					for (var c = -2; c <= 2; c++) {
+					
+						if (Math.abs(r) === 2 || 
+                            Math.abs(c) === 2 ||
+                            (r === 0 && c === 0) ) {
+							this.modules[row + r][col + c] = true;
+						} else {
+							this.modules[row + r][col + c] = false;
+						}
+					}
+				}
+			}
+		}
+	},
+	
+	setupTypeNumber : function(test) {
+	
+		var bits = QRUtil.getBCHTypeNumber(this.typeNumber);
+        var mod;
+	
+		for (var i = 0; i < 18; i++) {
+			mod = (!test && ( (bits >> i) & 1) === 1);
+			this.modules[Math.floor(i / 3)][i % 3 + this.moduleCount - 8 - 3] = mod;
+		}
+	
+		for (var x = 0; x < 18; x++) {
+			mod = (!test && ( (bits >> x) & 1) === 1);
+			this.modules[x % 3 + this.moduleCount - 8 - 3][Math.floor(x / 3)] = mod;
+		}
+	},
+	
+	setupTypeInfo : function(test, maskPattern) {
+	
+		var data = (this.errorCorrectLevel << 3) | maskPattern;
+		var bits = QRUtil.getBCHTypeInfo(data);
+        var mod;
+	
+		// vertical		
+		for (var v = 0; v < 15; v++) {
+	
+			mod = (!test && ( (bits >> v) & 1) === 1);
+	
+			if (v < 6) {
+				this.modules[v][8] = mod;
+			} else if (v < 8) {
+				this.modules[v + 1][8] = mod;
+			} else {
+				this.modules[this.moduleCount - 15 + v][8] = mod;
+			}
+		}
+	
+		// horizontal
+		for (var h = 0; h < 15; h++) {
+	
+			mod = (!test && ( (bits >> h) & 1) === 1);
+			
+			if (h < 8) {
+				this.modules[8][this.moduleCount - h - 1] = mod;
+			} else if (h < 9) {
+				this.modules[8][15 - h - 1 + 1] = mod;
+			} else {
+				this.modules[8][15 - h - 1] = mod;
+			}
+		}
+	
+		// fixed module
+		this.modules[this.moduleCount - 8][8] = (!test);
+	
+	},
+	
+	mapData : function(data, maskPattern) {
+		
+		var inc = -1;
+		var row = this.moduleCount - 1;
+		var bitIndex = 7;
+		var byteIndex = 0;
+		
+		for (var col = this.moduleCount - 1; col > 0; col -= 2) {
+	
+			if (col === 6) col--;
+	
+			while (true) {
+	
+				for (var c = 0; c < 2; c++) {
+					
+					if (this.modules[row][col - c] === null) {
+						
+						var dark = false;
+	
+						if (byteIndex < data.length) {
+							dark = ( ( (data[byteIndex] >>> bitIndex) & 1) === 1);
+						}
+	
+						var mask = QRUtil.getMask(maskPattern, row, col - c);
+	
+						if (mask) {
+							dark = !dark;
+						}
+						
+						this.modules[row][col - c] = dark;
+						bitIndex--;
+	
+						if (bitIndex === -1) {
+							byteIndex++;
+							bitIndex = 7;
+						}
+					}
+				}
+								
+				row += inc;
+	
+				if (row < 0 || this.moduleCount <= row) {
+					row -= inc;
+					inc = -inc;
+					break;
+				}
+			}
+		}
+		
+	}
+
+};
+
+QRCode.PAD0 = 0xEC;
+QRCode.PAD1 = 0x11;
+
+QRCode.createData = function(typeNumber, errorCorrectLevel, dataList) {
+	
+	var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, errorCorrectLevel);
+	
+	var buffer = new QRBitBuffer();
+	
+	for (var i = 0; i < dataList.length; i++) {
+		var data = dataList[i];
+		buffer.put(data.mode, 4);
+		buffer.put(data.getLength(), QRUtil.getLengthInBits(data.mode, typeNumber) );
+		data.write(buffer);
+	}
+
+	// calc num max data.
+	var totalDataCount = 0;
+	for (var x = 0; x < rsBlocks.length; x++) {
+		totalDataCount += rsBlocks[x].dataCount;
+	}
+
+	if (buffer.getLengthInBits() > totalDataCount * 8) {
+		throw new Error("code length overflow. (" + 
+            buffer.getLengthInBits() + 
+            ">" +  
+            totalDataCount * 8 + 
+            ")");
+	}
+
+	// end code
+	if (buffer.getLengthInBits() + 4 <= totalDataCount * 8) {
+		buffer.put(0, 4);
+	}
+
+	// padding
+	while (buffer.getLengthInBits() % 8 !== 0) {
+		buffer.putBit(false);
+	}
+
+	// padding
+	while (true) {
+		
+		if (buffer.getLengthInBits() >= totalDataCount * 8) {
+			break;
+		}
+		buffer.put(QRCode.PAD0, 8);
+		
+		if (buffer.getLengthInBits() >= totalDataCount * 8) {
+			break;
+		}
+		buffer.put(QRCode.PAD1, 8);
+	}
+
+	return QRCode.createBytes(buffer, rsBlocks);
+};
+
+QRCode.createBytes = function(buffer, rsBlocks) {
+
+	var offset = 0;
+	
+	var maxDcCount = 0;
+	var maxEcCount = 0;
+	
+	var dcdata = new Array(rsBlocks.length);
+	var ecdata = new Array(rsBlocks.length);
+	
+	for (var r = 0; r < rsBlocks.length; r++) {
+
+		var dcCount = rsBlocks[r].dataCount;
+		var ecCount = rsBlocks[r].totalCount - dcCount;
+
+		maxDcCount = Math.max(maxDcCount, dcCount);
+		maxEcCount = Math.max(maxEcCount, ecCount);
+		
+		dcdata[r] = new Array(dcCount);
+		
+		for (var i = 0; i < dcdata[r].length; i++) {
+			dcdata[r][i] = 0xff & buffer.buffer[i + offset];
+		}
+		offset += dcCount;
+		
+		var rsPoly = QRUtil.getErrorCorrectPolynomial(ecCount);
+		var rawPoly = new QRPolynomial(dcdata[r], rsPoly.getLength() - 1);
+
+		var modPoly = rawPoly.mod(rsPoly);
+		ecdata[r] = new Array(rsPoly.getLength() - 1);
+		for (var x = 0; x < ecdata[r].length; x++) {
+            var modIndex = x + modPoly.getLength() - ecdata[r].length;
+			ecdata[r][x] = (modIndex >= 0)? modPoly.get(modIndex) : 0;
+		}
+
+	}
+	
+	var totalCodeCount = 0;
+	for (var y = 0; y < rsBlocks.length; y++) {
+		totalCodeCount += rsBlocks[y].totalCount;
+	}
+
+	var data = new Array(totalCodeCount);
+	var index = 0;
+
+	for (var z = 0; z < maxDcCount; z++) {
+		for (var s = 0; s < rsBlocks.length; s++) {
+			if (z < dcdata[s].length) {
+				data[index++] = dcdata[s][z];
+			}
+		}
+	}
+
+	for (var xx = 0; xx < maxEcCount; xx++) {
+		for (var t = 0; t < rsBlocks.length; t++) {
+			if (xx < ecdata[t].length) {
+				data[index++] = ecdata[t][xx];
+			}
+		}
+	}
+
+	return data;
+
+};
+
+module.exports = QRCode;
+
+}},cache={};function require(name){if(!cache[name]){const m=cache[name]={exports:{}};modules[name](m,m.exports,require)}return cache[name].exports}return require('./index')})();</script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id), clamp=(x,a,b)=>Math.max(a,Math.min(b,x)), mix=(a,b,t)=>a+(b-a)*t, TAU=Math.PI*2, rnd=(a,b)=>a+Math.random()*(b-a), dist=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z), smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t)}, color=['#e9c475','#66e9ff','#ff897c'], rgb=h=>[parseInt(h.slice(1,3),16)/255,parseInt(h.slice(3,5),16)/255,parseInt(h.slice(5,7),16)/255], teamColors=color.map(rgb);
+const TYPES={base:{p:1,d:1,v:1,h:.10,name:'AIRBASE'},factory:{p:1.65,d:1,v:1,h:.13,name:'FACTORY'},fortress:{p:.9,d:1.45,v:1,h:.22,name:'FORTRESS'},fuel:{p:1.1,d:1,v:1.32,h:.08,name:'FUEL'},heavy:{p:1.14,d:1.1,v:1,h:.53,name:'HEAVY'}};
+const AIR=[{v:6.1,size:.23,hit:1},{v:7.2,size:.27,hit:1.05},{v:4.7,size:.43,hit:1.35},{v:3.65,size:.67,hit:1.65}]; const COST={boost:35,shield:45,storm:60}; const DIFF={easy:{wait:2.5,prod:.86,ag:.40},normal:{wait:1.35,prod:1,ag:.57},hard:{wait:.78,prod:1.13,ag:.74}};
+let game=null, mode='menu', role='solo', me=1, difficulty='normal', fraction=.5, armed=null, selected=new Set(), pointer=null, camMode=1, angle=0, visualTime=0, noticeUntil=0, paused=false, last=0, accumulator=0, snapshotClock=0, lastRemote=0, peer=null, channel=null, generation=0, seq=0, remoteSeq=0, lastRemoteOrder=0, audioOn=true, eventCounter=0, effects=[], floaters=[], labelEls=[], displayFlights=new Map(), mapKey='', ready=false, lastHUD=0;
+function show(id,on=true){$(id).classList.toggle('hide',!on)} function notice(s){$('notice').textContent=s;noticeUntil=performance.now()+2800} function setError(s){$('error').textContent=s} function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}};
+function createGame(seed=(Math.random()*2**31)|0){let r=rng(seed), islands=[], types=['factory','fortress','fuel','heavy','base','factory','heavy','fuel','fortress']; const rows=[[-4.6,0,4.6],[-3.2,3.2],[-4.6,0,4.6],[-3.2,3.2],[-4.6,0,4.6]];let id=0;rows.forEach((row,j)=>row.forEach((x,k)=>{let owner=j===0&&k!==1?2:j===4&&k!==1?1:0;let type=owner?'base':types[(id+Math.floor(seed%9+9))%9];let rad=owner?1.20:.91+r()*.23;islands.push({id:id++,x:x+(r()-.5)*.42,z:(j-2)*4.5+(r()-.5)*.45,r:rad,seed:(r()*1e9)|0,owner,type,n:owner?36:Math.floor(7+r()*13),max:owner?100:70+Math.floor(r()*30),prod:owner?2.05:1.55+r()*.45,boost:0,shield:0,stun:0,hit:0,dev:owner?2:1,pick:null})}));for(let [a,b] of [[0,10],[1,11],[2,12],[3,8],[4,9]]){let u=islands[a],v=islands[b];v.x=u.x;v.z=-u.z;v.r=u.r;v.type=u.type;v.n=u.n;v.max=u.max;v.prod=u.prod}return {seed,t:0,islands,flights:[],energy:[0,38,38],combo:[0,0,0],lastCap:[0,-99,-99],captures:[0,0,0],next:1,ai:1.5,pick:10,winner:0,events:[],intro:2.0}};
+function emit(kind,data={}){let e={id:++eventCounter,kind,...data};game.events.push(e);if(game.events.length>40)game.events.shift();visualEvent(e)}
+function launch(team,ids,targetId,frac){if(!game||game.winner||game.intro>0||game.flights.length>600)return false;let target=game.islands[targetId];if(!target||![.25,.5,1].includes(frac)||!Array.isArray(ids))return false;let sent=0;for(let id of [...new Set(ids)].slice(0,game.islands.length)){let s=game.islands[id];if(!s||s.owner!==team||s===target)continue;let n=Math.floor(s.n*frac);if(n<1)continue; s.n-=n;sent+=n;let groups=Math.min(n,Math.min(9,Math.max(1,Math.ceil(n/9))));let remain=n;for(let k=0;k<groups;k++){let count=Math.ceil(remain/(groups-k));remain-=count;let r=Math.random(), bias=TYPES[s.type].h+Math.min(.13,s.dev*.025),type=r<bias?3:r<bias+.24?2:r<bias+.47?1:0;let len=dist(s,target), duration=Math.max(.85,len/(AIR[type].v*TYPES[s.type].v));game.flights.push({id:game.next++,team,src:id,dst:targetId,n:count,type,p:-k*.115/duration,dur:duration,bend:(k%2?1:-1)*rnd(.28,1.1),phase:rnd(0,TAU),lane:k,combat:0});}emit('launch',{x:s.x,z:s.z,team,n})}return sent>0}
+function power(team,key,id){let i=game?.islands[id];if(!i||!COST[key]||game.winner||game.intro>0||game.energy[team]<COST[key]||(key==='storm'?i.owner===team:i.owner!==team))return false;game.energy[team]-=COST[key];if(key==='boost')i.boost=12;if(key==='shield')i.shield=Math.min(50,i.shield+30);if(key==='storm'){i.n=Math.max(0,i.n-24);i.stun=7;i.hit=1}emit(key,{x:i.x,z:i.z,team,n:key==='storm'?24:0});return true}
+function path(f,p=f.p){let s=game.islands[f.src],t=game.islands[f.dst],u=clamp(p,0,1),dx=t.x-s.x,dz=t.z-s.z,l=Math.hypot(dx,dz)||1,w=Math.sin(Math.PI*u)*f.bend+Math.sin(u*TAU+f.phase)*.17*Math.sin(Math.PI*u),x=mix(s.x,t.x,u)-dz/l*w,z=mix(s.z,t.z,u)+dx/l*w,y=.25+Math.sin(Math.PI*u)**.65*(1.25+f.type*.22);return {x,y,z}}
+function arrival(f){let i=game.islands[f.dst];if(i.owner===f.team){i.n=Math.min(i.max,i.n+f.n);emit('land',{x:i.x,z:i.z,team:f.team,n:f.n});return}let hit=f.n*AIR[f.type].hit/TYPES[i.type].d;let soak=Math.min(hit,i.shield);i.shield-=soak;hit-=soak;i.hit=1;i.n-=hit;emit('impact',{x:i.x,z:i.z,team:f.team,n:Math.round(hit),type:f.type});if(i.n<=0){i.owner=f.team;i.n=Math.max(1,-i.n/AIR[f.type].hit);i.shield=0;i.stun=0;i.boost=0;let t=f.team;game.combo[t]=game.t-game.lastCap[t]<8?game.combo[t]+1:1;game.lastCap[t]=game.t;game.energy[t]=Math.min(100,game.energy[t]+12+4*Math.min(5,game.combo[t]));game.captures[t]++;emit('capture',{x:i.x,z:i.z,team:t,n:game.combo[t]})}}
+function ai(){let d=DIFF[difficulty],best=null;for(let s of game.islands){if(s.owner!==2||s.n<11)continue;for(let t of game.islands){if(s===t)continue;let incoming=game.flights.filter(f=>f.dst===t.id).reduce((a,f)=>a+(f.team===2?f.n:-f.n),0);let n=Math.floor(s.n*d.ag);let score=t.owner===2?(-incoming-t.n)*1.1-8: (n+Math.max(0,incoming)-t.n*TYPES[t.type].d-t.shield)*1.25+ (t.owner===0?12:17)+(TYPES[t.type].p-1)*16;score-=dist(s,t)*.9;score+=rnd(-3,3);if(!best||score>best.score)best={s,t,score}}}if(best&&best.score>1)launch(2,[best.s.id],best.t.id,best.s.n>40? (difficulty==='hard'?1:.5):.5);if(game.energy[2]>60&&Math.random()<.18){let i=game.islands.filter(i=>i.owner===1).sort((a,b)=>b.n-a.n)[0];if(i)power(2,'storm',i.id)}}
+function tick(dt){if(!game||game.winner)return;if(game.intro>0){game.intro=Math.max(0,game.intro-dt);return}game.t+=dt;for(let t=1;t<=2;t++)game.energy[t]=Math.min(100,game.energy[t]+dt*1.6);for(let i of game.islands){i.hit=Math.max(0,i.hit-dt*3);i.boost=Math.max(0,i.boost-dt);i.stun=Math.max(0,i.stun-dt);i.shield=Math.max(0,i.shield-dt*.6);if(i.owner&&!i.stun)i.n=Math.min(i.max,i.n+dt*i.prod*TYPES[i.type].p*(i.boost?2.35:1)*(role==='solo'&&i.owner===2?DIFF[difficulty].prod:1));i.dev=Math.max(i.dev,Math.min(4,1+Math.floor(i.n/i.max*4)));if(i.pick){i.pick.tt-=dt;if(i.pick.tt<=0)i.pick=null;else if(i.owner&&i.pick.tt<17){let t=i.owner,k=i.pick.kind;if(k==='ACE')game.energy[t]=Math.min(100,game.energy[t]+24);if(k==='REPAIR')i.n=Math.min(i.max,i.n+18);if(k==='FURY')i.boost=9;if(k==='SHIELD')i.shield=Math.min(50,i.shield+20);emit('pickup',{x:i.x,z:i.z,team:t,label:k});i.pick=null}}}game.pick-=dt;if(game.pick<=0){game.pick=13;let opts=game.islands.filter(i=>!i.pick&&i.owner===0);if(!opts.length)opts=game.islands.filter(i=>!i.pick);if(opts.length){let i=opts[Math.floor(Math.random()*opts.length)];i.pick={kind:['ACE','REPAIR','FURY','SHIELD'][Math.floor(Math.random()*4)],tt:20}}}if(role==='solo'){game.ai-=dt;if(game.ai<=0){game.ai=DIFF[difficulty].wait;ai()}}for(let f of game.flights){f.p+=dt/f.dur;f.combat=Math.max(0,f.combat-dt)}// Spatial buckets bound opposing-aircraft checks.
+let buckets=new Map();for(let f of game.flights){if(f.p<=0||f.p>=1||f.n<=0)continue;let p=path(f),x=Math.floor(p.x/1.1),z=Math.floor(p.z/1.1);for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){for(let g of buckets.get(`${x+a},${z+b}`)||[]){if(f.team===g.team||f.combat||g.combat||g.n<=0||Math.hypot(p.x-g.pos.x,p.z-g.pos.z,p.y-g.pos.y)>.82)continue;let loss=Math.min(f.n,g.n,Math.max(1,Math.ceil(Math.min(f.n,g.n)*.28)));f.n-=loss;g.n-=loss;f.combat=g.combat=.48;emit('dogfight',{x:p.x,y:p.y,z:p.z,team:f.team,n:loss});}}f.pos=p;let k=`${x},${z}`;if(!buckets.has(k))buckets.set(k,[]);buckets.get(k).push(f)}let alive=[];for(let f of game.flights){delete f.pos;if(f.n<=0)continue;if(f.p>=1)arrival(f);else alive.push(f)}game.flights=alive;let has=t=>game.islands.some(i=>i.owner===t)||game.flights.some(f=>f.team===t);if(!has(1)||!has(2)){game.winner=has(1)?1:has(2)?2:3;emit('finish',{team:game.winner});}}
+// Real WebGL mesh renderer. No CDN, shaders and all geometry are procedural.
+const canvas=$('world'), field=$('field'), fallback=$('fallback');let gl=null, program=null, staticBuffer=null,dynamicBuffer=null,staticCount=0, terrain=[], mesh=[], cw=1,ch=1, camera={r:[1,0,0],u:[0,1,0],f:[0,0,1],sx:10,sy:12}, loc={}, ctx2=null;
+function initGL(){try{gl=canvas.getContext('webgl',{alpha:false,antialias:true,powerPreference:'high-performance'});if(!gl)throw Error('WebGL unavailable');let vs=`attribute vec3 aPos;attribute vec3 aColor;attribute float aMat;uniform vec3 rightV,upV,forwardV;uniform vec2 extent;varying vec3 worldV,col;varying float mat;void main(){worldV=aPos;col=aColor;mat=aMat;gl_Position=vec4(dot(aPos,rightV)/extent.x,dot(aPos,upV)/extent.y,dot(aPos,forwardV)/35.0,1.0);}`;let fs=`precision mediump float;varying vec3 worldV,col;varying float mat;uniform float time;float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}void main(){vec3 c=col;vec2 p=worldV.xz;if(mat>0.5&&mat<1.5){float a=noise(p*.34+vec2(time*.03,-time*.025));float b=noise(p*1.7+vec2(-time*.14,time*.09));float w=sin(p.x*4.5+p.y*2.3+sin(p.y*1.9+time*.8)*1.1-time*1.5);float v=sin(p.x*2.0-p.y*5.6+time*1.1+b*3.);float caustic=pow(max(0.0,(w+v)*.5),7.0);c*=.85+a*.27+b*.1;c+=vec3(.20,.34,.35)*caustic*.40;}else if(mat>1.5&&mat<2.5){float n=noise(p*18.0)*.17+noise(p*4.0)*.13;c*=.85+n;}gl_FragColor=vec4(clamp(c,0.0,1.0),1.0);}`;function shader(type,s){let sh=gl.createShader(type);gl.shaderSource(sh,s);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(sh));return sh}program=gl.createProgram();gl.attachShader(program,shader(gl.VERTEX_SHADER,vs));gl.attachShader(program,shader(gl.FRAGMENT_SHADER,fs));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));gl.useProgram(program);for(let k of ['aPos','aColor','aMat'])loc[k]=gl.getAttribLocation(program,k);for(let k of ['rightV','upV','forwardV','extent','time'])loc[k]=gl.getUniformLocation(program,k);staticBuffer=gl.createBuffer();dynamicBuffer=gl.createBuffer();gl.enable(gl.DEPTH_TEST);gl.clearColor(.025,.15,.22,1);canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();useFallback('Graphics context lost — software 3D mode')});}catch(e){console.warn(e);useFallback('WebGL unavailable — software 3D mode')}}
+function useFallback(msg){gl=null;ctx2=fallback.getContext('2d');show('fallback');notice(msg);resize()}
+function resize(){let r=field.getBoundingClientRect(),d=Math.min(1.7,devicePixelRatio||1);cw=Math.max(1,r.width);ch=Math.max(1,r.height);for(let c of [canvas,fallback]){c.width=Math.round(cw*d);c.height=Math.round(ch*d)}if(gl)gl.viewport(0,0,canvas.width,canvas.height);if(ctx2)ctx2.setTransform(d,0,0,d,0,0);$('guide').setAttribute('viewBox',`0 0 ${cw} ${ch}`)}
+function setCamera(dt){let target=camMode===0?0:camMode===1?Math.sin(visualTime*.17)*.22:Math.sin(visualTime*.21)*.64;if(game&&game.intro>0)target=.48*smooth(game.intro/2);if(!pointer&&!selected.size&&!armed)angle=mix(angle,target,Math.min(1,dt*2.1));let pitch=.98, s=Math.sin(angle),c=Math.cos(angle),sp=Math.sin(pitch),cp=Math.cos(pitch);camera.r=[c,0,-s];camera.u=[-s*sp,cp,-c*sp];camera.f=[-s*cp,-sp,-c*cp];let ax=1,ay=1;for(let x of [-6.5,6.5])for(let z of [-11,11]){ax=Math.max(ax,Math.abs(x*c-z*s));ay=Math.max(ay,Math.abs(-x*s*sp-z*c*sp)+.8)}let aspect=cw/ch;camera.sy=Math.max(ay,ax/aspect)*1.06;camera.sx=camera.sy*aspect}
+function project(x,y,z){let r=camera.r,u=camera.u;return {x:(.5+(x*r[0]+y*r[1]+z*r[2])/camera.sx*.5)*cw,y:(.5-(x*u[0]+y*u[1]+z*u[2])/camera.sy*.5)*ch}}
+function tri(a,b,c,col,mat=0,shade=true){let k=1;if(shade){let u=b.map((v,i)=>v-a[i]),v=c.map((v,i)=>v-a[i]),n=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]],l=Math.hypot(...n)||1;k=.66+.34*Math.abs((n[0]*-.43+n[1]*.85+n[2]*-.3)/l)}for(let p of [a,b,c])mesh.push(...p,...col.map(v=>v*k),mat)}
+function quad(a,b,c,d,col,mat=0,shade=true){tri(a,b,c,col,mat,shade);tri(a,c,d,col,mat,shade)}
+function box(x,y,z,w,h,d,col,rot=0){let c=Math.cos(rot),s=Math.sin(rot),p=(a,b,e)=>[x+a*c-e*s,y+b,z+a*s+e*c],a=p(-w/2,0,-d/2),b=p(w/2,0,-d/2),cc=p(w/2,0,d/2),dd=p(-w/2,0,d/2),e=p(-w/2,h,-d/2),f=p(w/2,h,-d/2),g=p(w/2,h,d/2),j=p(-w/2,h,d/2);quad(e,f,g,j,col);quad(a,b,f,e,col.map(v=>v*.82));quad(b,cc,g,f,col.map(v=>v*.71));quad(cc,dd,j,g,col.map(v=>v*.77));quad(dd,a,e,j,col.map(v=>v*.9))}
+function cone(x,y,z,r,top,h,col,n=10){for(let k=0;k<n;k++){let a=k/n*TAU,b=(k+1)/n*TAU;let p=[x+Math.cos(a)*r,y,z+Math.sin(a)*r],q=[x+Math.cos(b)*r,y,z+Math.sin(b)*r],u=[x+Math.cos(a)*top,y+h,z+Math.sin(a)*top],v=[x+Math.cos(b)*top,y+h,z+Math.sin(b)*top];quad(p,q,v,u,col);tri([x,y+h,z],u,v,col)}}
+function ring(x,z,r,y,w,col){for(let k=0;k<40;k++){let a=k/40*TAU,b=(k+1)/40*TAU,p=(t,rr)=>[x+Math.cos(t)*rr,y,z+Math.sin(t)*rr];quad(p(a,r),p(b,r),p(b,r+w),p(a,r+w),col,0,false)}}
+function terrainBuild(){mesh=[];quad([-70,-.09,-70],[70,-.09,-70],[70,-.09,70],[-70,-.09,70],[.025,.24,.36],1,false);if(game)for(let i of game.islands){let R=rng(i.seed),n=48,ph=R()*TAU,ph2=R()*TAU,ph3=R()*TAU,rings=[[],[],[],[],[],[]];for(let k=0;k<n;k++){let a=k/n*TAU,co=i.r*(1+.15*Math.sin(a*2+ph)+.105*Math.sin(a*3+ph2)+.05*Math.sin(a*7+ph3)),sh=.75+.12*Math.sin(a*3+ph)+.05*Math.sin(a*5+ph2),reef=1.52+.20*Math.sin(a*2+ph2)+.13*Math.sin(a*5+ph3);let rs=[co*reef,co*(1.16+.07*Math.cos(a*4+ph)),co,co*sh,co*.46,0],ys=[-.065,-.039,.035,.19,.28,.30];for(let j=0;j<6;j++)rings[j].push([i.x+Math.cos(a)*rs[j],ys[j],i.z+Math.sin(a)*rs[j]])}let cols=[[.035,.37,.44],[.075,.64,.60],[.86,.76,.51],[.24,.43,.19],[.34,.52,.23]];for(let j=0;j<5;j++)for(let k=0;k<n;k++){let b=(k+1)%n,c=cols[j].map(v=>v*(.94+R()*.12));quad(rings[j][k],rings[j][b],rings[j+1][b],rings[j+1][k],c,j<2?1:2,j>=2)}// dock, seawall and trees with real mesh geometry
+let a=ph,dx=Math.cos(a),dz=Math.sin(a),x=i.x+dx*i.r*.99,z=i.z+dz*i.r*.99;box(x,.02,z,.28,.14,i.r*.78,[.48,.50,.45],Math.PI/2-a);box(x+dx*i.r*.36,.03,z+dz*i.r*.36,.8,.15,.21,[.61,.59,.49],Math.PI/2-a);for(let k=0;k<11;k++){let a=R()*TAU,rr=i.r*(.46+R()*.23),x=i.x+Math.cos(a)*rr,z=i.z+Math.sin(a)*rr;if(Math.abs(z-i.z)<.30)continue;cone(x,.17,z,.04,.025,.21,[.38,.29,.16],5);cone(x,.32,z,.15+R()*.08,.01,.32,[.17,.37+R()*.13,.18],7)}// runway slab, markings and taxi apron
+box(i.x,.305,i.z,1.29,.035,.34,[.18,.22,.24]);box(i.x-.4,.345,i.z+.015,.12,.007,.022,[.90,.89,.73]);box(i.x,.345,i.z+.015,.12,.007,.022,[.90,.89,.73]);box(i.x+.4,.345,i.z+.015,.12,.007,.022,[.90,.89,.73]);box(i.x+.32,.295,i.z+.31,.52,.035,.25,[.44,.47,.45]);}
+terrain=new Float32Array(mesh);staticCount=terrain.length/7;if(gl){gl.bindBuffer(gl.ARRAY_BUFFER,staticBuffer);gl.bufferData(gl.ARRAY_BUFFER,terrain,gl.STATIC_DRAW)}}
+function buildings(i){let x=i.x,z=i.z,y=.32,co=teamColors[i.owner],shake=i.hit*Math.sin(visualTime*38)*.07; x+=shake;let concrete=[.63,.67,.64],roof=co.map(v=>v*.72+.13);let h=i.type==='heavy'?.30:.22;box(x-.40,y,z+.39,.47,h,.32,concrete);box(x-.40,y+h,z+.39,.50,.07,.35,roof);box(x-.40,y+.045,z+.56,.27,.12,.025,[.10,.18,.21]);box(x+.40,y,z-.39,.19,.35,.19,concrete);box(x+.40,y+.30,z-.39,.28,.12,.28,roof);box(x+.40,y+.43,z-.39,.025,.13,.025,[.76,.78,.72]);if(i.dev>=2){cone(x+.42,y,z+.36,.13,.13,.21,[.67,.69,.67],12);cone(x+.42,y+.21,z+.36,.14,.09,.035,roof,12);box(x-.35,y,z-.40,.32,.20,.26,concrete);box(x-.35,y+.20,z-.40,.36,.055,.30,roof)}if(i.dev>=3){box(x+.06,y,z+.43,.31,.15,.22,concrete);box(x+.06,y+.15,z+.43,.34,.05,.25,roof);cone(x-.60,y,z-.15,.11,.11,.20,[.68,.70,.65],10)}if(i.dev>=4){box(x+.10,y,z-.43,.30,.26,.25,concrete);box(x+.10,y+.26,z-.43,.33,.05,.28,roof)}if(i.type==='fortress'){for(let a of [-1,1]){cone(x+a*.68,y,z,.15,.10,.17,[.43,.48,.43],8);box(x+a*.68,y+.16,z,.24,.05,.07,roof)}}if(i.type==='factory'){box(x-.48,y,z-.34,.34,.30,.26,concrete);cone(x-.59,y+.30,z-.34,.05,.05,.24,[.61,.38,.29],8)}if(i.type==='fuel')for(let a of [-1,1])cone(x+a*.28,y,z+.56,.13,.13,.26,roof,12);if(i.type==='heavy')box(x-.05,y,z-.55,.70,.27,.29,roof);ring(i.x,i.z,i.r*1.18,.065,.055,co);if(selected.has(i.id))ring(i.x,i.z,i.r*1.28,.075,.09,[.86,1,1]);if(i.shield>0){ring(i.x,i.z,i.r*1.40,.14,.045,[.40,.82,1]);ring(i.x,i.z,i.r*1.18,.85,.022,[.40,.82,1])}if(i.boost)ring(i.x,i.z,i.r*1.34,.085,.05,[1,.78,.24]);if(i.stun)ring(i.x,i.z,i.r*1.32,.08,.04,[.82,.36,1]);if(i.pick){let y=.85+Math.sin(visualTime*3)*.12;cone(x,y,z,.17,0,.20,[1,.76,.23],4);cone(x,y-.2,z,0,.17,.20,[1,.76,.23],4)}}
+// Aircraft meshes use local +X for the nose. Roll and pitch use the actual path tangent.
+function aircraft(p,heading,pitch,roll,type,team,size){let c=Math.cos(heading),s=Math.sin(heading),cp=Math.cos(pitch),sp=Math.sin(pitch),cr=Math.cos(roll),sr=Math.sin(roll),co=teamColors[team],dark=co.map(v=>v*.52),light=co.map(v=>v*.55+.45),a=(x,y,z)=>{let Y=y*cr-z*sr,Z=y*sr+z*cr,X=x*cp-Y*sp;Y=x*sp+Y*cp;return [p.x+(X*c-Z*s)*size,p.y+Y*size,p.z+(X*s+Z*c)*size]};let nose=a(1.12,0,0),tail=a(-1,0,0),l=a(.18,0,-.17),r=a(.18,0,.17),top=a(.25,.23,0),bot=a(.18,-.12,0);tri(nose,l,top,light);tri(nose,top,r,co);tri(nose,bot,l,dark);tri(nose,r,bot,dark);tri(tail,top,l,co);tri(tail,r,top,light);tri(tail,l,bot,dark);tri(tail,bot,r,dark);let wing=type===0?.86:type===1?.76:type===2?1.13:1.24,lead=type===1?.58:.24,sweep=type===1?-.79:-.27;for(let side of [-1,1]){quad(a(lead,.02,side*.11),a(sweep,.04,side*wing),a(sweep-.23,.035,side*wing*.92),a(-.58,.02,side*.10),co);tri(a(-.64,.02,side*.07),a(-.92,.03,side*.43),a(-1.03,.02,side*.07),light);if(type>=2){for(let k=0;k<(type===3?2:1);k++){let z=side*(.42+k*.33);quad(a(.48,.06,z-.09),a(.48,.06,z+.09),a(-.39,.09,z+.09),a(-.39,.09,z-.09),light);tri(a(.48,.06,z-.09),a(.66,.06,z),a(.48,.06,z+.09),[.89,.83,.57])}}}tri(a(-.52,.05,0),a(-.92,.43,0),a(-1,.04,0),dark);tri(a(.62,.12,0),a(.22,.27,-.10),a(.03,.20,0),[.04,.16,.22]);tri(a(.62,.12,0),a(.03,.20,0),a(.22,.27,.10),[.08,.25,.29])}
+function beam(a,b,width,col){let dx=b.x-a.x,dz=b.z-a.z,l=Math.hypot(dx,dz)||1,ox=-dz/l*width,oz=dx/l*width;quad([a.x+ox,a.y,a.z+oz],[a.x-ox,a.y,a.z-oz],[b.x-ox,b.y,b.z-oz],[b.x+ox,b.y,b.z+oz],col,0,false)}
+function flightMesh(f,dt){let old=displayFlights.get(f.id),p=f.p;if(role==='guest'&&old!==undefined)p=mix(old+dt/f.dur,f.p+Math.min(.10,(performance.now()-lastRemote)/1000)/f.dur,.25);displayFlights.set(f.id,p);if(p<0)return;let q=path(f,p),a=path(f,p-.008),b=path(f,p+.008),head=Math.atan2(b.z-a.z,b.x-a.x),pitch=Math.atan2(b.y-a.y,Math.hypot(b.x-a.x,b.z-a.z)),roll=Math.sin(p*TAU+f.phase)*.42;let n=Math.min(5,Math.max(1,Math.ceil(f.n/3))),size=AIR[f.type].size;for(let k=0;k<n;k++){let row=Math.floor((k+1)/2),side=k===0?0:(k%2?1:-1),gap=size*2.55,off=side*row*gap*(.75+.25*Math.sin(p*Math.PI)),back=row*gap*.88,wiggle=Math.sin(visualTime*3+f.phase+k)*.055,pos={x:q.x-Math.cos(head)*back-Math.sin(head)*(off+wiggle),z:q.z-Math.sin(head)*back+Math.cos(head)*(off+wiggle),y:q.y+row*.12};aircraft(pos,head,pitch,roll+wiggle,f.type,f.team,size);let tail={x:pos.x-Math.cos(head)*size*1.05,z:pos.z-Math.sin(head)*size*1.05,y:pos.y};for(let j=0;j<3;j++){let L=size*(1.3+j*.85),end={x:tail.x-Math.cos(head)*L,z:tail.z-Math.sin(head)*L,y:tail.y+.035*j};beam(tail,end,.018+j*.008,teamColors[f.team].map(v=>v*(.48-j*.10)+.10));tail=end}if(p>.72&&game.islands[f.dst].owner!==f.team&&f.type>=2){let t=(p*4+k*.19)%1,tx=game.islands[f.dst];let bomb={x:mix(pos.x,tx.x,t),z:mix(pos.z,tx.z,t),y:mix(pos.y,.25,t*t)};cone(bomb.x,bomb.y,bomb.z,.045,.018,.13,f.type===3?[1,.52,.15]:[.88,.94,.34],6)}if(f.combat>.15){let end={x:pos.x+Math.cos(head)*1.4,z:pos.z+Math.sin(head)*1.4,y:pos.y};beam(pos,end,.025,[1,.9,.39])}}}
+function drawBuffer(buffer,count){if(!count)return;gl.bindBuffer(gl.ARRAY_BUFFER,buffer);for(let [key,n,off] of [['aPos',3,0],['aColor',3,12],['aMat',1,24]]){gl.enableVertexAttribArray(loc[key]);gl.vertexAttribPointer(loc[key],n,gl.FLOAT,false,28,off)}gl.drawArrays(gl.TRIANGLES,0,count)}
+function render(dt){setCamera(dt);if(gl){gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(program);gl.uniform3fv(loc.rightV,camera.r);gl.uniform3fv(loc.upV,camera.u);gl.uniform3fv(loc.forwardV,camera.f);gl.uniform2f(loc.extent,camera.sx,camera.sy);gl.uniform1f(loc.time,visualTime);drawBuffer(staticBuffer,staticCount);mesh=[];if(game){for(let i of game.islands)buildings(i);for(let f of game.flights)flightMesh(f,dt)}for(let e of effects){let t=e.age/e.life;if(e.kind==='ring'){ring(e.x,e.z,.15+t*1.5,.36,.035,e.col.map(v=>v*(1-t*.7)));continue}let x=e.x+e.vx*e.age,z=e.z+e.vz*e.age,y=Math.max(.12,e.y+e.vy*e.age-e.age*e.age*1.5);cone(x,y,z,e.size*(1-t*.65),.01,e.size,e.col.map(v=>v*(1-t*.5)),5)}gl.bindBuffer(gl.ARRAY_BUFFER,dynamicBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(mesh),gl.DYNAMIC_DRAW);drawBuffer(dynamicBuffer,mesh.length/7)}else if(ctx2){softwareRender(dt)}renderLabels();drawGuide()}
+let softwareLayer=null,softwareAngle=999,softwareKey='',softwareW=0,softwareH=0,softwareAt=-99;
+function paintMesh(c,data){let faces=[],f=camera.f,proj=project;for(let k=0;k<data.length;k+=21){let x=data[k],y=data[k+1],z=data[k+2],x2=data[k+7],y2=data[k+8],z2=data[k+9],x3=data[k+14],y3=data[k+15],z3=data[k+16];if(Math.abs(x)>30||Math.abs(x2)>30||Math.abs(x3)>30)continue;let a=proj(x,y,z),b=proj(x2,y2,z2),d=proj(x3,y3,z3);if(Math.max(a.x,b.x,d.x)<0||Math.min(a.x,b.x,d.x)>cw||Math.max(a.y,b.y,d.y)<0||Math.min(a.y,b.y,d.y)>ch)continue;let cross=(b.x-a.x)*(d.y-a.y)-(b.y-a.y)*(d.x-a.x);if(Math.abs(cross)<.035)continue;let depth=(x+x2+x3)*f[0]+(y+y2+y3)*f[1]+(z+z2+z3)*f[2];faces.push({a,b,d,depth,k})}faces.sort((a,b)=>b.depth-a.depth);for(let q of faces){let k=q.k,col=`rgb(${Math.round(clamp(data[k+3],0,1)*255)},${Math.round(clamp(data[k+4],0,1)*255)},${Math.round(clamp(data[k+5],0,1)*255)})`;c.fillStyle=c.strokeStyle=col;c.lineWidth=.35;c.beginPath();c.moveTo(q.a.x,q.a.y);c.lineTo(q.b.x,q.b.y);c.lineTo(q.d.x,q.d.y);c.closePath();c.fill();c.stroke()}}
+function softwareRender(dt){let now=performance.now();if(now-softwareAt<40)return;softwareAt=now;let c=ctx2,g=c.createLinearGradient(0,0,cw,ch);g.addColorStop(0,'#0c5067');g.addColorStop(.55,'#0a4058');g.addColorStop(1,'#062d45');c.fillStyle=g;c.fillRect(0,0,cw,ch);for(let j=0;j<45;j++){let x=(j*107.77+visualTime*7)%(cw+60)-30,y=(j*79.38+Math.sin(j+visualTime*.7)*10)%ch;c.strokeStyle='rgba(135,225,236,.07)';c.lineWidth=1;c.beginPath();c.moveTo(x,y);c.quadraticCurveTo(x+12,y+Math.sin(j)*6,x+25,y+Math.cos(j)*3);c.stroke()}if(!softwareLayer||Math.abs(softwareAngle-angle)>.006||softwareKey!==mapKey||softwareW!==cw||softwareH!==ch){softwareLayer=document.createElement('canvas');let d=Math.min(devicePixelRatio||1,1.4);softwareLayer.width=Math.round(cw*d);softwareLayer.height=Math.round(ch*d);let a=softwareLayer.getContext('2d');a.setTransform(d,0,0,d,0,0);paintMesh(a,terrain);softwareAngle=angle;softwareKey=mapKey;softwareW=cw;softwareH=ch}if(game){c.drawImage(softwareLayer,0,0,cw,ch);mesh=[];for(let i of game.islands)buildings(i);for(let f of game.flights)flightMesh(f,dt);for(let e of effects){let t=e.age/e.life;if(e.kind==='ring'){ring(e.x,e.z,.15+t*1.5,.36,.035,e.col.map(v=>v*(1-t*.7)));continue}cone(e.x+e.vx*e.age,Math.max(.1,e.y+e.vy*e.age-e.age*e.age*1.5),e.z+e.vz*e.age,e.size*(1-t*.65),.01,e.size,e.col,5)}paintMesh(c,mesh)}}
+function resetLabels(){for(let e of labelEls)e.remove();labelEls=[];for(let i of game.islands){let e=document.createElement('div');e.className='islabel';e.innerHTML='<b></b><small></small>';e.dataset.id=i.id;$('labels').append(e);labelEls.push(e)}}
+function renderLabels(){if(!game)return;for(let i of game.islands){let e=labelEls[i.id];if(!e)continue;let p=project(i.x,.1,i.z);p.y+=i.r*cw/(camera.sx*2)*.66+5;e.style.left=p.x+'px';e.style.top=p.y+'px';e.style.color=color[i.owner];e.classList.toggle('sel',selected.has(i.id));let num=String(Math.floor(Math.max(0,i.n)));if(e.firstChild.textContent!==num)e.firstChild.textContent=num;let tag=TYPES[i.type].name+(i.pick?' ✦':i.shield>0?' ◈':i.boost?' ↑':i.stun?' !':'');if(e.lastChild.textContent!==tag)e.lastChild.textContent=tag}for(let f of floaters){let p=project(f.x,.8+f.age*.75,f.z);f.el.style.left=p.x+'px';f.el.style.top=p.y+'px';f.el.style.opacity=String(1-f.age/f.life)}}
+function hitAt(x,y){if(!game)return null;let best=null,score=Infinity;for(let i of game.islands){let p=project(i.x,.45,i.z),r=Math.max(20,i.r*cw/(camera.sx*2)*1.12),d=Math.hypot(x-p.x,y-p.y);if(d<r+6&&d<score){score=d;best=i}}return best}
+function drawGuide(){let svg=$('guide');if(!pointer||!pointer.moved||!pointer.src){svg.replaceChildren();return}let p=project(pointer.src.x,.6,pointer.src.z),i=hitAt(pointer.x,pointer.y),q=i?project(i.x,.6,i.z):pointer;svg.innerHTML=`<path d="M${p.x} ${p.y} L${q.x} ${q.y}" stroke="#b5f7ff" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="7 4" fill="none"/><circle cx="${q.x}" cy="${q.y}" r="18" stroke="${i?'#eaff9e':'#b5f7ff'}" stroke-width="2" fill="none"/><text x="${(p.x+q.x)/2}" y="${(p.y+q.y)/2-10}" fill="white" font-size="13" font-weight="bold" text-anchor="middle">${Math.floor(pointer.src.n*fraction)}</text>`}
+function requestOrder(ids,target){if(!game||game.winner||game.intro>0||paused)return;let data={kind:'order',ids:[...ids],target:target.id,frac:fraction,seq:++seq};if(role==='guest'){notice(send(data)?'Order transmitted':'Link unavailable • retry')}else if(launch(me,data.ids,data.target,data.frac))notice(target.owner===me?'Reinforcements airborne':'Squadrons airborne');else notice('No aircraft ready')}
+function requestPower(i){let k=armed;if(!k)return;if(game.energy[me]<COST[k]){notice('Not enough ACE');return}if(k==='storm'?i.owner===me:i.owner!==me){notice('Choose '+(k==='storm'?'a rival or neutral':'a friendly')+' island');return}if(role==='guest'){if(!send({kind:'power',key:k,target:i.id,seq:++seq})){notice('Link unavailable • retry');return}}else power(me,k,i.id);armed=null;updateHUD()}
+function localPos(e){let r=field.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}}
+field.addEventListener('pointerdown',e=>{if(mode!=='play'||!game||game.intro>0||pointer||e.button>0)return;let p=localPos(e),i=hitAt(p.x,p.y);pointer={...p,startX:p.x,startY:p.y,id:e.pointerId,src:i?.owner===me?i:null,moved:false};field.setPointerCapture(e.pointerId);unlockAudio()});field.addEventListener('pointermove',e=>{if(!pointer||e.pointerId!==pointer.id)return;Object.assign(pointer,localPos(e));if(Math.hypot(pointer.x-pointer.startX,pointer.y-pointer.startY)>9)pointer.moved=true});field.addEventListener('pointerup',e=>{if(!pointer||e.pointerId!==pointer.id)return;let d=pointer,p=localPos(e),i=hitAt(p.x,p.y);pointer=null;if(field.hasPointerCapture(e.pointerId))field.releasePointerCapture(e.pointerId);if(!i){selected.clear();armed=null;return}if(armed){requestPower(i);return}if(d.moved&&d.src){if(i!==d.src){selected=new Set([d.src.id]);requestOrder(selected,i)}return}if(d.moved)return;if(selected.size){if(selected.size===1&&selected.has(i.id)){selected.clear();notice('Selection cleared')}else requestOrder(selected,i)}else if(i.owner===me){selected.add(i.id);notice('Base selected • tap targets or drag');sfx('select',me)}else notice('Select your own base first')});field.addEventListener('pointercancel',()=>{pointer=null});field.addEventListener('lostpointercapture',()=>{pointer=null});
+function visualEvent(e){let k=e.kind;if(k==='finish')return;if(k==='capture'||k==='pickup'||k==='boost'||k==='shield'||k==='storm'||k==='impact'||k==='land'||k==='dogfight'||k==='launch'){let txt=k==='capture'?(e.n>1?'COMBO ×'+e.n:'CAPTURED'):k==='pickup'?'+'+e.label:k==='impact'?'-'+e.n:k==='land'?'+'+e.n:k==='dogfight'?'INTERCEPT':k==='launch'?'↑ '+e.n:k.toUpperCase();let el=document.createElement('div');el.className='float';el.textContent=txt;el.style.color=k==='impact'?'#ffcc79':color[e.team]||'#fff';$('labels').append(el);floaters.push({el,x:e.x,z:e.z,age:0,life:k==='capture'?1.8:1.05});if(floaters.length>40)floaters.shift().el.remove()}let heavy=k==='impact'||k==='storm'||k==='capture'||k==='dogfight';if(heavy||k==='land'||k==='launch'||k==='shield'){let n=heavy?(e.type===3?23:13):5;for(let j=0;j<n;j++){let a=rnd(0,TAU),v=rnd(.5,2.8);effects.push({x:e.x+rnd(-.20,.20),z:e.z+rnd(-.20,.20),y:e.y||.4,vx:Math.cos(a)*v,vz:Math.sin(a)*v,vy:rnd(.5,2),size:rnd(.045,.16),age:0,life:rnd(.35,.85),col:j%3===0?[1,.56,.12]:teamColors[e.team]||[1,.8,.5]})}effects.push({kind:'ring',x:e.x,z:e.z,age:0,life:.65,col:teamColors[e.team]||[1,.8,.5]});if(effects.length>550)effects.splice(0,effects.length-550)}sfx(k,e.team)}
+let ac=null,master=null,noiseBuffer=null,musicStep=0,musicNext=0,lastSfx=0;function unlockAudio(){if(!audioOn)return;try{if(!ac){let A=window.AudioContext||window.webkitAudioContext;if(!A)return;ac=new A();master=ac.createGain();master.gain.value=.40;let comp=ac.createDynamicsCompressor();master.connect(comp);comp.connect(ac.destination);noiseBuffer=ac.createBuffer(1,ac.sampleRate*.6,ac.sampleRate);let a=noiseBuffer.getChannelData(0);for(let i=0;i<a.length;i++)a[i]=Math.random()*2-1}if(ac.state==='suspended')ac.resume().catch(()=>{})}catch(e){console.warn('Audio unavailable',e)}}
+function tone(freq,dur,vol,type='sine',end=freq,delay=0){if(!ac||!audioOn||ac.state!=='running')return;let t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(freq,t);o.frequency.exponentialRampToValueAtTime(Math.max(20,end),t+dur);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.0001,vol),t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+.025)}
+function noise(dur,vol,freq){if(!ac||!audioOn||ac.state!=='running')return;let t=ac.currentTime,s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();s.buffer=noiseBuffer;f.type='lowpass';f.frequency.value=freq;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);s.connect(f);f.connect(g);g.connect(master);s.start(t);s.stop(t+dur)}
+function sfx(k,team){if(!ac||!audioOn)return;let now=performance.now();if((k==='impact'||k==='dogfight'||k==='launch')&&now-lastSfx<55)return;lastSfx=now;if(k==='launch'){tone(team===me?320:235,.17,.10,'triangle',620);noise(.12,.035,700)}else if(k==='impact'||k==='storm'){tone(105,.27,.18,'sine',38);noise(.32,.12,1600)}else if(k==='dogfight'){tone(950,.075,.055,'sawtooth',280);noise(.09,.035,2700)}else if(k==='capture'||k==='pickup'){[0,4,7,12].forEach((n,i)=>tone(330*2**(n/12),.28,.07,'triangle',330*2**(n/12),i*.07))}else if(k==='select'){tone(570,.08,.035,'sine',690)}else if(k==='land'){tone(440,.10,.035,'triangle',560)}else{tone(220,.23,.07,'sine',520);tone(660,.22,.04,'triangle',880,.07)}}
+function soundtrack(){if(!ac||!audioOn||ac.state!=='running'||mode!=='play'||paused||!game||game.winner)return;if(ac.currentTime<musicNext)return;let mine=game.islands.filter(i=>i.owner===me).length,enemy=game.islands.filter(i=>i.owner===3-me).length,danger=clamp((enemy-mine+2)/8,0,1),tempo=83+danger*62,step=60/tempo/2;musicNext=ac.currentTime+step;let notes=[0,7,12,3,10,7,15,5],root=55*2**(([0,0,3,-2][Math.floor(musicStep/16)%4])/12),n=notes[musicStep%8];tone(root*4*2**(n/12),step*.85,.025+danger*.022,'triangle');if(musicStep%4===0){tone(root,step*3,.07,'sine');tone(95,.17,.07,'sine',38)}if(musicStep%2===1&&danger>.3)noise(.06,.018+danger*.012,4600);if(musicStep%8===0){tone(root*2,step*6,.027,'sine');tone(root*2*1.5,step*6,.019,'sine')}musicStep++}
+function updateHUD(){if(!game)return;let totals=[0,0,0],counts=[0,0,0];for(let i of game.islands){counts[i.owner]++;totals[i.owner]+=i.n}for(let f of game.flights)totals[f.team]+=f.n;$('blue').textContent=`${me===1?'YOU · ':''}BLUE ${counts[1]} / ${Math.floor(totals[1])}`;$('red').textContent=`${me===2?'YOU · ':''}RED ${counts[2]} / ${Math.floor(totals[2])}`;$('mode').textContent=role==='solo'?difficulty.toUpperCase():'PVP';$('clock').textContent=`${String(Math.floor(game.t/60)).padStart(2,'0')}:${String(Math.floor(game.t%60)).padStart(2,'0')}`;$('balance').firstChild.style.width=(100*totals[1]/Math.max(1,totals[1]+totals[2]))+'%';$('ace').textContent=Math.floor(game.energy[me]);$('energybar').firstChild.style.width=game.energy[me]+'%';$('combo').textContent=game.t-game.lastCap[me]<8&&game.combo[me]>1?'COMBO ×'+game.combo[me]:'';for(let b of document.querySelectorAll('[data-power]')){b.disabled=game.energy[me]<COST[b.dataset.power];b.classList.toggle('active',armed===b.dataset.power)}for(let id of selected)if(game.islands[id]?.owner!==me)selected.delete(id);if(game.intro>0){show('cinema');$('cinemaTitle').textContent='ARCHIPELAGO';$('cinemaSub').textContent=role==='solo'?'AIR COMMAND ONLINE':'TWO COMMANDERS / ONE OCEAN'}else show('cinema',false);if(game.winner&&mode==='play'){mode='end';releaseWake();show('end');$('result').textContent=game.winner===3?'Draw':game.winner===me?'Victory':'Defeat';$('resultStats').textContent=`${game.captures[me]} captures · ${Math.floor(game.t)} seconds · ${role==='solo'?'Solo':'Two-player'}`;sfx('capture',game.winner)}}
+function resetVisual(){selected.clear();armed=null;pointer=null;displayFlights.clear();effects=[];for(let f of floaters)f.el.remove();floaters=[];angle=0;mapKey=String(game.seed);resetLabels();terrainBuild();updateHUD()}
+function startBattle(r){role=r;me=r==='guest'?2:1;mode='play';paused=false;show('menu',false);show('network',false);show('qrNetwork',false);show('help',false);show('end',false);show('cinema',false);eventCounter=0;remoteSeq=0;lastRemoteOrder=0;seq=0;accumulator=0;snapshotClock=0;lastRemote=performance.now();lastSeenEvent=0;game=r==='guest'?null:createGame();if(game)resetVisual();notice(r==='guest'?'Waiting for host battlefield':'Ready • select your base');unlockAudio();keepAwake();if(r==='host')broadcast()}
+function leave(){releaseWake();generation++;closeQuick();clearJoinHash();try{channel?.close();peer?.close()}catch{}channel=peer=null;game=null;mode='menu';role='solo';me=1;paused=false;selected.clear();armed=null;pointer=null;for(let e of labelEls)e.remove();labelEls=[];for(let f of floaters)f.el.remove();floaters=[];effects=[];displayFlights.clear();mapKey='';terrainBuild();show('menu');show('network',false);show('qrNetwork',false);show('help',false);show('end',false);show('cinema',false);setError('');notice('Ready for deployment')}
+// WebRTC manual offer/answer exchange. All simulation and order validation live on host.
+let wake=null;async function keepAwake(){if(!navigator.wakeLock||document.hidden||mode!=='play')return;try{if(!wake||wake.released)wake=await navigator.wakeLock.request('screen')}catch{}}function releaseWake(){if(wake){wake.release().catch(()=>{});wake=null}}
+let lastSeenEvent=0,networkRole='host';function send(obj){if(channel?.readyState==='open'&&channel.bufferedAmount<512000){try{channel.send(JSON.stringify(obj));return true}catch{}}return false}
+function broadcast(){if(game)send({kind:'snapshot',game})}
+function receive(raw){let m;try{if(typeof raw!=='string'||raw.length>600000)return;m=JSON.parse(raw)}catch{return}if(!m||typeof m.kind!=='string')return;if(role==='host'&&mode==='play'){if(!Number.isSafeInteger(m.seq)||m.seq<=remoteSeq||performance.now()-lastRemoteOrder<40)return;remoteSeq=m.seq;lastRemoteOrder=performance.now();if(m.kind==='order'&&Array.isArray(m.ids)&&m.ids.every(Number.isInteger)&&Number.isInteger(m.target))launch(2,m.ids,m.target,m.frac);if(m.kind==='power'&&Number.isInteger(m.target)&&Object.hasOwn(COST,m.key))power(2,m.key,m.target)}else if(role==='guest'&&m.kind==='snapshot'&&m.game&&Array.isArray(m.game.islands)&&m.game.islands.length===13&&Array.isArray(m.game.flights)){let newMap=!game||game.seed!==m.game.seed;game=m.game;lastRemote=performance.now();if(newMap)resetVisual();for(let e of game.events||[])if(e.id>lastSeenEvent){lastSeenEvent=e.id;visualEvent(e)}if(game.winner)updateHUD()}}
+function bindChannel(c,token){channel=c;c.onopen=()=>{if(token!==generation)return;$('netStatus').textContent='Connected';startBattle(networkRole)};c.onmessage=e=>{if(token===generation)receive(e.data)};c.onclose=()=>{if(token!==generation)return;if(mode==='play'){paused=true;notice('Connection closed • return to menu');show('help')}else $('netStatus').textContent='Connection closed. Start a new pairing.'};c.onerror=()=>{if(token===generation)$('netStatus').textContent='Data link error. Try reconnecting.'}}
+function encode(desc){return btoa(unescape(encodeURIComponent(JSON.stringify({v:1,type:desc.type,sdp:desc.sdp}))))}function decode(s,type){let d=JSON.parse(decodeURIComponent(escape(atob(s.replace(/\s/g,'')))));if(d.v!==1||d.type!==type||typeof d.sdp!=='string')throw Error('Incorrect '+type+' code');return {type:d.type,sdp:d.sdp}}
+function gather(pc){return new Promise(resolve=>{if(pc.iceGatheringState==='complete')return resolve();let done=()=>{clearTimeout(timer);pc.removeEventListener('icegatheringstatechange',check);resolve()};let check=()=>{if(pc.iceGatheringState==='complete')done()};let timer=setTimeout(done,8500);pc.addEventListener('icegatheringstatechange',check)})}
+async function localDescription(desc,token){let pc=peer;await pc.setLocalDescription(desc);await gather(pc);if(token!==generation)return;let s=pc.localDescription;if(!s||!s.sdp.includes('a=candidate:'))throw Error('No local network candidate. Check Wi-Fi and browser permissions.');$('outCode').value=encode(s);$('netStatus').textContent=networkRole==='host'?'Invitation ready. Send it to the joining phone.':'Response ready. Send it back to the host. Keep this screen open.'}
+function setupPeer(r){if(!window.RTCPeerConnection)throw Error('WebRTC is not supported by this browser. Try Chrome or Safari.');networkRole=r;let token=++generation;peer=new RTCPeerConnection({iceServers:[]});peer.ondatachannel=e=>{if(token===generation)bindChannel(e.channel,token)};peer.onconnectionstatechange=()=>{if(token!==generation)return;let s=peer.connectionState;if(s==='failed'){$('netStatus').textContent='Direct connection failed. Disable guest Wi-Fi isolation or use another network. No relay configured.';if(mode==='play'){paused=true;show('help');notice('Network link failed')}}else if(s==='disconnected'){if(mode==='play')paused=true;notice('Network interrupted; waiting for recovery')}else if(s==='connected'){$('netStatus').textContent='Connected';if(mode==='play')paused=false}else if(s==='connecting')$('netStatus').textContent='Connecting directly…'};return token}
+async function openNetwork(r){unlockAudio();try{let token=setupPeer(r);show('menu',false);show('network');$('outCode').value='';$('inCode').value='';show('inputWrap');$('netTitle').textContent=r==='host'?'Host a battle':'Join a battle';$('netInstructions').textContent=r==='host'?'1. Copy your invitation to the other phone. 2. Paste its response below.':'1. Paste the host invitation below. 2. Copy your generated response back to the host.';$('inLabel').textContent=r==='host'?'Paste response from guest':'Paste invitation from host';$('outLabel').textContent=r==='host'?'Invitation to share':'Response to share';$('acceptCode').textContent=r==='host'?'Connect to guest':'Generate response';$('acceptCode').disabled=r==='host';$('netStatus').textContent=r==='host'?'Gathering Wi-Fi connection details…':'Waiting for invitation';if(r==='host'){bindChannel(peer.createDataChannel('pacific-v1'),token);await localDescription(await peer.createOffer(),token);if(token===generation)$('acceptCode').disabled=false}}catch(e){$('netStatus').textContent=e.message;setError(e.message)}}
+$('acceptCode').onclick=async()=>{let token=generation,btn=$('acceptCode');btn.disabled=true;try{if(!peer)throw Error('Start pairing again');let d=decode($('inCode').value,networkRole==='host'?'answer':'offer');await peer.setRemoteDescription(d);if(token!==generation)return;if(networkRole==='guest'){await localDescription(await peer.createAnswer(),token);show('inputWrap',false)}else $('netStatus').textContent='Connecting directly…';}catch(e){$('netStatus').textContent='Could not connect: '+e.message;btn.disabled=false}};
+$('copyCode').onclick=async()=>{let t=$('outCode');if(!t.value)return;try{await navigator.clipboard.writeText(t.value);$('netStatus').textContent='Copied. Share with the other phone.'}catch{t.focus();t.select();$('netStatus').textContent='Code selected. Use your phone’s Copy command.'}};
+
+// Quick pairing: hosted PeerJS signaling + direct WebRTC game traffic.
+let quickPeer=null,quickConn=null,quickTimer=0,quickRole='host',quickRoom='',peerLibrary=null;
+const ROOM_RE=/^ps3-[a-f0-9]{32}$/;
+function clearJoinHash(){if(location.hash.startsWith('#psjoin='))try{history.replaceState(null,'',location.pathname+location.search)}catch{}}
+function closeQuick(){clearTimeout(quickTimer);quickTimer=0;let c=quickConn,p=quickPeer;quickConn=quickPeer=null;try{c?.close()}catch{}try{p?.destroy()}catch{}}
+function newRoom(){const a=new Uint8Array(16);crypto.getRandomValues(a);return 'ps3-'+Array.from(a,x=>x.toString(16).padStart(2,'0')).join('')}
+function roomFrom(text){text=text.trim();if(ROOM_RE.test(text))return text;try{let u=new URL(text);let r=new URLSearchParams(u.hash.slice(1)).get('psjoin');return ROOM_RE.test(r||'')?r:''}catch{return ''}}
+function inviteURL(room){let u=new URL(location.href);u.hash='psjoin='+room;return u.href}
+function drawQR(text){let qr=new window.PacificQR(-1,0);qr.addData(text);qr.make();let n=qr.getModuleCount(),size=8,canvas=$('qrCanvas');canvas.width=canvas.height=(n+8)*size;let c=canvas.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,canvas.width,canvas.height);c.fillStyle='#101820';for(let y=0;y<n;y++)for(let x=0;x<n;x++)if(qr.isDark(y,x))c.fillRect((x+4)*size,(y+4)*size,size,size)}
+function loadPeerJS(){if(window.Peer)return Promise.resolve(window.Peer);if(peerLibrary)return peerLibrary;peerLibrary=new Promise((resolve,reject)=>{let urls=['https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js','https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js'];function next(){if(!urls.length){reject(Error('Could not load online pairing. Check internet or use manual Wi-Fi pairing.'));return}let tag=document.createElement('script'),done=false;let fail=()=>{if(done)return;done=true;clearTimeout(timer);tag.remove();next()};let timer=setTimeout(fail,6500);tag.src=urls.shift();tag.async=true;tag.onload=()=>{if(done)return;if(!window.Peer){fail();return}done=true;clearTimeout(timer);resolve(window.Peer)};tag.onerror=fail;document.head.append(tag)}next()}).catch(e=>{peerLibrary=null;throw e});return peerLibrary}
+function quickStatus(text){$('qrStatus').textContent=text}
+function quickScreen(r){show('menu',false);show('network',false);show('qrNetwork');show('qrDisplay',false);show('qrEntry',false);show('qrRetry',false);$('qrTitle').textContent=r==='host'?'Host a battle':'Join a battle';$('qrInstructions').textContent=r==='host'?'Scan this QR code with the other phone’s camera. Open the link it shows. The battle begins automatically.':'Open the host’s QR link or paste it here.';$('qrManual').textContent='Use manual Wi-Fi pairing instead';quickRole=r}
+function quickFail(message,token){if(token!==generation)return;generation++;closeQuick();channel=null;show('qrDisplay',false);quickStatus(message);show('qrRetry');$('qrConnect').disabled=false}
+function quickLinkClosed(token){if(token!==generation)return;clearTimeout(quickTimer);if(mode==='play'){paused=true;notice('Connection closed • return to menu');show('help')}else quickFail('The connection closed before the battle started. Try again.',token)}
+function connectQuick(c,token,r){if(token!==generation){c.close();return}quickConn=c;let started=false,opened=false;let adapter={get readyState(){return c.open?'open':'closed'},get bufferedAmount(){return c.dataChannel?.bufferedAmount??(c.bufferSize||0)*4096},send(raw){c.send(raw)},close(){c.close()}};channel=adapter;
+function start(){if(started||token!==generation)return;started=true;clearTimeout(quickTimer);try{startBattle(r);clearJoinHash()}catch(e){console.error(e);leave();setError('Multiplayer startup failed: '+e.message)}}
+function openedLink(){if(opened||token!==generation)return;opened=true;quickStatus('Direct link established • synchronizing battlefield…');if(r==='guest'){start();if(token===generation)send({kind:'quick-ready',v:1})}}
+c.on('data',raw=>{if(token!==generation||typeof raw!=='string')return;if(!started&&r==='host'){let m;try{m=JSON.parse(raw)}catch{return}if(m.kind==='quick-ready'&&m.v===1)start();return}if(started)receive(raw)});c.on('open',openedLink);c.on('close',()=>quickLinkClosed(token));c.on('error',e=>{if(token!==generation)return;if(mode==='play'){paused=true;notice('Data link error • return to menu');show('help')}else quickFail('Data link error: '+(e.message||'Try again'),token)});if(c.open)openedLink();}
+async function quickPair(r,room=''){unlockAudio();generation++;closeQuick();try{channel?.close();peer?.close()}catch{}channel=peer=null;let token=generation;quickRoom=room;quickScreen(r);if(r==='guest'&&!ROOM_RE.test(room)){show('qrEntry');$('qrConnect').disabled=false;quickStatus('Waiting for invitation.');return}if(!/^https?:$/.test(location.protocol)){quickFail('Publish this file on your GitHub Pages HTTPS site before using QR multiplayer.',token);return}quickStatus('Connecting to the online pairing service…');try{let Peer=await loadPeerJS();if(token!==generation)return;let id=r==='host'?newRoom():undefined;quickRoom=r==='host'?id:room;let p=quickPeer=new Peer(id,{debug:0,config:{iceServers:[{urls:'stun:stun.l.google.com:19302'}]}});quickTimer=setTimeout(()=>quickFail('Pairing service did not respond. Try again or use manual Wi-Fi pairing.',token),16000);
+p.on('error',e=>{if(token!==generation)return;if(mode==='play'){if(!quickConn?.open){paused=true;notice('Network error • return to menu');show('help')}return}quickFail(e.type==='peer-unavailable'?'Host room not found. Ask the host to create a fresh QR code.':'Pairing error: '+(e.message||e.type||'Check your network'),token)});
+p.on('disconnected',()=>{if(token===generation&&mode!=='play')quickFail('Lost contact with the pairing service. Try again or use manual Wi-Fi pairing.',token)});
+p.on('connection',c=>{if(token!==generation||r!=='host'||quickConn||c.metadata?.protocol!=='pacific-qr-v1'){c.close();return}clearTimeout(quickTimer);quickStatus('Guest found • establishing direct connection…');quickTimer=setTimeout(()=>quickFail('Direct link timed out. Check Wi-Fi client isolation or try a different network.',token),25000);connectQuick(c,token,'host')});
+p.on('open',()=>{if(token!==generation)return;clearTimeout(quickTimer);if(r==='host'){let url=inviteURL(id);$('qrLink').value=url;$('qrRoom').textContent='ROOM '+id.slice(-8).toUpperCase();show('qrDisplay');$('qrCanvas').classList.remove('hide');try{drawQR(url);quickStatus('Waiting for player 2 to scan…')}catch(e){$('qrCanvas').classList.add('hide');quickStatus('QR could not be generated. Copy the invitation link instead.')} }else{quickStatus('Host located • establishing direct connection…');quickTimer=setTimeout(()=>quickFail('Direct link timed out. Check Wi-Fi client isolation or try a different network.',token),25000);connectQuick(p.connect(room,{serialization:'json',reliable:true,metadata:{protocol:'pacific-qr-v1'}}),token,'guest')}});
+}catch(e){quickFail(e.message,token)}}
+$('qrConnect').onclick=()=>{let room=roomFrom($('qrInput').value);if(!room){quickStatus('That is not a valid Pacific Strike invitation.');return}quickPair('guest',room)};
+$('qrCopy').onclick=async()=>{let input=$('qrLink');try{await navigator.clipboard.writeText(input.value);quickStatus('Link copied • send it to player 2.')}catch{input.focus();input.select();quickStatus('Link selected • use your phone’s Copy command.')}};
+$('qrBack').onclick=leave;$('qrRetry').onclick=()=>quickPair(quickRole,quickRole==='guest'?quickRoom:'');$('qrManual').onclick=()=>{let r=quickRole;leave();openNetwork(r)};
+
+$('solo').onclick=()=>{try{difficulty=$('difficulty').value;startBattle('solo')}catch(e){console.error(e);leave();setError('Startup error: '+e.message)}};$('host').onclick=()=>quickPair('host');$('join').onclick=()=>quickPair('guest');$('manualHost').onclick=()=>openNetwork('host');$('manualJoin').onclick=()=>openNetwork('guest');$('netBack').onclick=leave;$('replay').onclick=leave;$('exit').onclick=leave;$('helpBtn').onclick=()=>{if(mode!=='play')return;show('help');paused=role==='solo'};$('resume').onclick=()=>{show('help',false);if(role==='solo'||channel?.readyState==='open')paused=false};$('sound').onclick=()=>{audioOn=!audioOn;$('sound').textContent=audioOn?'Sound on':'Muted';if(audioOn)unlockAudio();if(master)master.gain.value=audioOn?.40:0};$('camera').onclick=()=>{camMode=(camMode+1)%3;$('camera').textContent=['Static','Orbit','Cinema'][camMode];selected.clear();pointer=null};$('all').onclick=()=>{if(game&&mode==='play'){selected=new Set(game.islands.filter(i=>i.owner===me).map(i=>i.id));armed=null;notice('All friendly bases selected')}};$('clear').onclick=()=>{selected.clear();armed=null;updateHUD()};for(let b of document.querySelectorAll('[data-frac]'))b.onclick=()=>{fraction=Number(b.dataset.frac);document.querySelectorAll('[data-frac]').forEach(a=>a.classList.toggle('active',a===b))};for(let b of document.querySelectorAll('[data-power]'))b.onclick=()=>{if(!game||game.energy[me]<COST[b.dataset.power])return;armed=armed===b.dataset.power?null:b.dataset.power;selected.clear();notice(armed?'Power armed • tap target':'Power cancelled');updateHUD()};
+function frame(ts){requestAnimationFrame(frame);let dt=Math.min(.10,Math.max(0,(ts-(last||ts))/1000));last=ts;visualTime+=dt;if(mode==='play'&&!paused&&game){if(role!=='guest'){accumulator+=dt;while(accumulator>=1/30){tick(1/30);accumulator-=1/30}if(role==='host'){snapshotClock+=dt;if(snapshotClock>=.085||game.winner){snapshotClock=0;broadcast()}}}else if(performance.now()-lastRemote>2500)notice('Waiting for host updates…');soundtrack()}for(let e of effects)e.age+=dt;effects=effects.filter(e=>e.age<e.life);for(let f of floaters)f.age+=dt;floaters=floaters.filter(f=>{if(f.age>=f.life){f.el.remove();return false}return true});if(game){let ids=new Set(game.flights.map(f=>f.id));for(let id of displayFlights.keys())if(!ids.has(id))displayFlights.delete(id)}if(ts-lastHUD>100){lastHUD=ts;updateHUD()}try{render(dt)}catch(e){console.error('Render',e);if(gl)useFallback('WebGL error — software 3D enabled');else{notice('Rendering error: '+e.message)}}}
+window.addEventListener('resize',resize);document.addEventListener('visibilitychange',()=>{last=0;accumulator=0;if(document.hidden&&role==='host')notice('Keep host screen awake during multiplayer');else if(!document.hidden)keepAwake()});window.addEventListener('error',e=>{if(mode==='menu')setError(e.message)});initGL();resize();terrainBuild();requestAnimationFrame(frame);let autoRoom=roomFrom(location.href);if(autoRoom)quickPair('guest',autoRoom);
+</script></body></html>
